@@ -1,4 +1,5 @@
 #include "comms.h"
+#include "pacman.h"
 
 #include <SDL2/SDL.h>
 #include <arpa/inet.h>
@@ -7,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #define PORT 1337
 #define DEBUG 1
 
@@ -116,12 +118,27 @@ void* connectionThread() {
   }
 }
 
-void handle_NewUser(client_args* client) {}
+void handle_NewUser(,
+                    entity** clients,
+                    int* n_clients,
+                    int n_lines,
+                    int n_cols) {
+  user_details* new_client_details = malloc(sizeof(user_details));
+  entity *new_pacmanentity, *new_monster_entity;
+
+  new_client_details = get_newUser(client->client_socket);
+
+  new_pacman_entity = get_newEntity(0, 0, 2, *n_clients, new_client_details);
+  new_monster_entity = get_newEntity(0, 0, 3, *n_clients, new_client_details);
+
+  n_clients++;
+}
 
 int main(int argc, char* argv[]) {
-  int done = 0;
+  int done = 0, n_clients = 0;
   SDL_Event event;
   pthread_t thread_id;
+  entity* clients[100];
 
   Event_MovePacman = SDL_RegisterEvents(1);
   Event_MoveMonster = SDL_RegisterEvents(1);

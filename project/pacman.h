@@ -15,6 +15,7 @@ typedef struct user_details {
   int b;
 
   int score;
+  int client_socket;
 } user_details;
 
 typedef struct entity {
@@ -31,6 +32,8 @@ typedef struct entity {
 
 //-------------------FUNCTIONS-------------------
 
-entity* get_newEntity(int x, int y, int type);
+entity* get_newEntity(int x, int y, int type, int idx, user_details* u_details);
+
+user_details* get_newUser(int socket);
 
 void free_board(entity**** ent, int n_lin, int n_col);
