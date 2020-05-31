@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "UI_library.h"
 #include "pacman.h"
@@ -75,11 +76,13 @@ int main(int argc , char* argv[]){
 	int n_cols, n_lines;
 	char *token;
 	const char s[2] = "x";
-    char** board_map;
+    entity*** board_map;
 
 	Event_ShowCharacter =  SDL_RegisterEvents(1);
 	if (argc == 2){
+
 		struct sockaddr_in server_local_addr;
+
 		//it is a server
 		is_server = 1;
 
@@ -93,10 +96,10 @@ int main(int argc , char* argv[]){
         fscanf(fp, "%d %d", &n_cols, &n_lines);
         getc(fp);
 
-        board_map = (char **)malloc(sizeof(char *) * n_lines);
+        board_map = (entity ***)malloc(sizeof(entity **) * n_lines);
 
         for (int i = 0; i < n_lines; i++) {
-            board_map[i] = (char *)malloc(sizeof(char) * n_cols);
+            board_map[i] = (entity **)malloc(sizeof(entity *) * n_cols);
         }
 
         //printf("%d %d\n", n_cols, n_lines);
@@ -106,11 +109,16 @@ int main(int argc , char* argv[]){
         {
             for (int a = 0; a < n_cols; a++)
             {   
-                board_map[i][a] = getc(fp);
+				if(getc(fp)=='B'){
+
+					board_map[i][a] = get_newEntity(i, a, INT_MAX);
+
+				}
             }
             getc(fp);
         }
         fclose(fp);
+		/*
 
         for (int i = 0; i < n_lines; i++)
         {
@@ -121,7 +129,7 @@ int main(int argc , char* argv[]){
             printf("\n");
         }
         //------
-
+*/
 		server_socket = socket(AF_INET, SOCK_STREAM, 0);
 		if (server_socket == -1){
 			perror("socket: ");
@@ -202,11 +210,36 @@ int main(int argc , char* argv[]){
     for (int i = 0; i < n_lines; i++)
     {
         for (int a = 0; a < n_cols; a++)
-        {   
-            if (board_map[i][a] == 'B')
+		{
+
+            if ((board_map[i][a]) != NULL)
             {
-                paint_brick(a, i);
-            }
+				if ((board_map[i][a])->type == INT_MAX)	//brick
+				{
+					paint_brick(a, i);
+				}
+				if ((board_map[i][a])->type == 0)	//cherry
+				{
+					//paint cherry
+				}
+				if ((board_map[i][a])->type == 1)	//lemon
+				{
+					//paint lemon
+				}
+				if ((board_map[i][a])->type == 2)	//Pacman
+				{
+					//paint cherry
+				}
+				if ((board_map[i][a])->type == 2)	//Monster
+				{
+					//paint Monster
+				}
+				if ((board_map[i][a])->type == INT_MAX - 1)	//Charged_Pacman
+				{
+					//paint Charged_Pacman
+				}
+
+            }//0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (MAXINT-1:Wall) | MAXINT:Wall | 
         }
     }
 
@@ -223,7 +256,7 @@ int main(int argc , char* argv[]){
 					done = SDL_TRUE;
 			}
 
-
+			//------------
             
 
 			if(event.type == Event_ShowCharacter){
@@ -277,5 +310,8 @@ int main(int argc , char* argv[]){
 
 	printf("fim\n");
 	close_board_windows();
+
+	free_board(&board_map, n_lines, n_cols);
+
 	exit(0);
 }
