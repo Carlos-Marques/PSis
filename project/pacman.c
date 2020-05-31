@@ -77,6 +77,8 @@ int main(int argc , char* argv[]){
 	char *token;
 	const char s[2] = "x";
     entity*** board_map;
+	int brick_counter = 0, aux;
+	entity** brick_list;
 
 	Event_ShowCharacter =  SDL_RegisterEvents(1);
 	if (argc == 2){
@@ -111,25 +113,39 @@ int main(int argc , char* argv[]){
             {   
 				if(getc(fp)=='B'){
 
-					board_map[i][a] = get_newEntity(i, a, INT_MAX);
+					board_map[i][a] = get_newEntity(i, a, 5);
+					brick_counter++;
 
 				}
             }
             getc(fp);
         }
-        fclose(fp);
-		/*
 
-        for (int i = 0; i < n_lines; i++)
+        fclose(fp);
+
+		brick_list = (entity **)malloc(sizeof(entity *) * brick_counter);
+
+		aux=0;
+
+		for (int i = 0; i < n_lines; i++)
         {
             for (int a = 0; a < n_cols; a++)
-            {
-                putc(board_map[i][a], stdout);
+            {   
+				if(board_map[i][a] != NULL && (board_map[i][a])->type == 5){
+
+					brick_list[aux] = board_map[i][a];
+					aux++;
+				}
             }
-            printf("\n");
         }
-        //------
-*/
+
+		printf("counter: %d\n\n", brick_counter);
+		for (int i = 0; i < brick_counter; i++)
+		{
+			printf("type: %d\n", brick_list[i]->type);
+		}
+		
+
 		server_socket = socket(AF_INET, SOCK_STREAM, 0);
 		if (server_socket == -1){
 			perror("socket: ");
@@ -214,7 +230,7 @@ int main(int argc , char* argv[]){
 
             if ((board_map[i][a]) != NULL)
             {
-				if ((board_map[i][a])->type == INT_MAX)	//brick
+				if ((board_map[i][a])->type == 5)	//brick
 				{
 					paint_brick(a, i);
 				}
@@ -234,7 +250,7 @@ int main(int argc , char* argv[]){
 				{
 					//paint Monster
 				}
-				if ((board_map[i][a])->type == INT_MAX - 1)	//Charged_Pacman
+				if ((board_map[i][a])->type == 4)	//Charged_Pacman
 				{
 					//paint Charged_Pacman
 				}
