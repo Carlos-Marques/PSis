@@ -22,7 +22,7 @@ typedef struct entity{
   int line;
   int column;
 
-  int type; //0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (MAXINT-1:Charge_Pacman) | MAXINT:Wall | 
+  int type; //-1:free space | 0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (4 e 5:Charge_Pacman) | 6:Wall | 
   int idx;
 
   user_details* u_details;

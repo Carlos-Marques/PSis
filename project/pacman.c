@@ -77,8 +77,9 @@ int main(int argc , char* argv[]){
 	char *token;
 	const char s[2] = "x";
     entity*** board_map;
-	int brick_counter = 0, aux;
+	int brick_counter = 0, free_space_counter = 0, aux1, aux2;
 	entity** brick_list;
+	entity** free_space_list;
 
 	Event_ShowCharacter =  SDL_RegisterEvents(1);
 	if (argc == 2){
@@ -104,18 +105,19 @@ int main(int argc , char* argv[]){
             board_map[i] = (entity **)malloc(sizeof(entity *) * n_cols);
         }
 
-        //printf("%d %d\n", n_cols, n_lines);
-
-
         for (int i = 0; i < n_lines; i++)
         {
             for (int a = 0; a < n_cols; a++)
             {   
 				if(getc(fp)=='B'){
 
-					board_map[i][a] = get_newEntity(i, a, 5);
+					board_map[i][a] = get_newEntity(i, a, 6);
 					brick_counter++;
+				}
+				if(getc(fp)==' '){
 
+					board_map[i][a] = get_newEntity(i, a, -1);
+					free_space_counter++;
 				}
             }
             getc(fp);
@@ -124,17 +126,24 @@ int main(int argc , char* argv[]){
         fclose(fp);
 
 		brick_list = (entity **)malloc(sizeof(entity *) * brick_counter);
+		free_space_list = (entity **)malloc(sizeof(entity *) * free_space_counter);;
 
-		aux=0;
+		aux1=0;
+		aux2=0;
 
 		for (int i = 0; i < n_lines; i++)
         {
             for (int a = 0; a < n_cols; a++)
             {   
-				if(board_map[i][a] != NULL && (board_map[i][a])->type == 5){
+				if((board_map[i][a])->type == 6){	//é brick
 
-					brick_list[aux] = board_map[i][a];
-					aux++;
+					brick_list[aux1] = board_map[i][a];
+					aux1++;
+				}
+				else{	//é free space
+
+					free_space_list[aux2] = board_map[i][a];
+					aux2++;
 				}
             }
         }
@@ -205,15 +214,6 @@ int main(int argc , char* argv[]){
 		int err;
 		char msg[15];
 		err = recv(sock_fd, &msg , sizeof(msg), 0);
-		/*
-		token = strtok(msg, s);
-		int aux=0;
-		while ( token != NULL ) {
-			window_dim[aux] = atoi(token);
-      		token = strtok(NULL, s);
-			aux++;
-		}
-        */
 		pthread_create(&thread_id, NULL, clientThread, NULL);
 	}
 	if((argc!= 2) && (argc != 3)){
@@ -227,10 +227,9 @@ int main(int argc , char* argv[]){
     {
         for (int a = 0; a < n_cols; a++)
 		{
-
             if ((board_map[i][a]) != NULL)
             {
-				if ((board_map[i][a])->type == 5)	//brick
+				if ((board_map[i][a])->type == 6)	//brick
 				{
 					paint_brick(a, i);
 				}
@@ -290,8 +289,39 @@ int main(int argc , char* argv[]){
 				printf("new event received\n");
 			}
 
-			//when the mouse mooves the monster also moves
-			if(event.type == SDL_MOUSEMOTION){
+			//Index, Type, type
+
+			//int direcao; //0-3
+			//int idx;
+			//int type;
+
+			
+			//handle_mov();
+
+			/*
+			if(event.type == SDL_KEYDOWN){
+
+				if (event.key.keysym.sym == SDLK_DOWN)
+				{
+					printf("down!\n");
+				}
+				else if (event.key.keysym.sym == SDLK_UP)
+				{
+					printf("up!\n");
+				}
+				else if (event.key.keysym.sym == SDLK_LEFT)
+				{
+					printf("left!\n");
+				}
+				else if (event.key.keysym.sym == SDLK_RIGHT)
+				{
+					printf("right!\n");
+				}
+				else{
+					//??
+				}
+
+				
 				int x_new, y_new;
 
 				//this fucntion return the place cwher the mouse cursor is
@@ -318,8 +348,9 @@ int main(int argc , char* argv[]){
 					msg.y = y;
 					send(sock_fd, &msg, sizeof(msg), 0);
 				}
+				
 			}
-
+			*/
             
 		}
 	}
