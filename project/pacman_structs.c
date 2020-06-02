@@ -19,12 +19,12 @@ entity* get_newEntity(int x,
   return ent;
 }
 
-user_details* get_newUser(int socket) {
+user_details* get_newUser(int socket, int r, int g, int b) {
   user_details* u_details = (user_details*)malloc(sizeof(user_details));
 
-  u_details->r = random() % 255;
-  u_details->g = random() % 255;
-  u_details->b = random() % 255;
+  u_details->r = r;
+  u_details->g = g;
+  u_details->b = b;
   u_details->score = 0;
   u_details->client_socket = socket;
 

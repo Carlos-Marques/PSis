@@ -34,6 +34,6 @@ typedef struct entity {
 
 entity* get_newEntity(int x, int y, int type, int idx, user_details* u_details);
 
-user_details* get_newUser(int socket);
+user_details* get_newUser(int socket, int r, int g, int b);
 
 void free_board(entity**** ent, int n_lin, int n_col);
