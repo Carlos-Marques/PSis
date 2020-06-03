@@ -1,39 +1,15 @@
-typedef struct message {
-  int character;  // 2 pacman 3 monster
-  int x;
-  int y;
-} message;
+#include <SDL2/SDL.h>
+#include <arpa/inet.h>
+#include <limits.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-typedef struct board_dim_message {
-  int x;
-  int y;
-} board_dim_message;
+#include "UI_library.h"
+#include "gameLogic.h"
 
-typedef struct user_details {
-  int r;
-  int g;
-  int b;
-
-  int score;
-  int client_socket;
-} user_details;
-
-typedef struct entity {
-  int line;
-  int column;
-
-  int type;  // 0:Cherry | 1:Lemon | 2:Pacman | 3:Monster |
-             // (MAXINT-1:Charge_Pacman) | MAXINT:Wall |
-  int idx;
-
-  user_details* u_details;
-
-} entity;
-
-//-------------------FUNCTIONS-------------------
-
-entity* get_newEntity(int x, int y, int type, int idx, user_details* u_details);
-
-user_details* get_newUser(int socket, int r, int g, int b);
-
-void free_board(entity**** ent, int n_lin, int n_col);
+void* clientThread(void* arg);
+void* serverThread(void* argc);

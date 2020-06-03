@@ -1,5 +1,4 @@
-#include <stdlib.h>
-#include "pacman.h"
+#include "pacman_structs.h"
 
 entity* get_newEntity(int x,
                       int y,
