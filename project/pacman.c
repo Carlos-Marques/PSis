@@ -1,13 +1,3 @@
-#include <SDL2/SDL.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>
-
-#include "UI_library.h"
 #include "pacman.h"
 
 Uint32 Event_ShowCharacter;
@@ -74,12 +64,19 @@ int main(int argc , char* argv[]){
 	int done = 0;
 	pthread_t thread_id;
 	int n_cols, n_lines;
-	char *token;
+	char c;
 	const char s[2] = "x";
     entity*** board_map;
 	int brick_counter = 0, free_space_counter = 0, aux1, aux2;
 	entity** brick_list;
 	entity** free_space_list;
+	entity** pacmans = (entity **)malloc(sizeof(entity *) * 2);
+	entity** monsters = (entity **)malloc(sizeof(entity *) * 2);
+	entity** fruits = (entity **)malloc(sizeof(entity *) * 2);
+
+	int fruit_counter = 0, monster_counter = 0, pacman_counter = 0; 
+
+	srand(785);
 
 	Event_ShowCharacter =  SDL_RegisterEvents(1);
 	if (argc == 2){
@@ -105,24 +102,67 @@ int main(int argc , char* argv[]){
             board_map[i] = (entity **)malloc(sizeof(entity *) * n_cols);
         }
 
+
+
+		//FOR TESTING
+		pacmans = (entity **)malloc(sizeof(entity *) * 2);
+		monsters = (entity **)malloc(sizeof(entity *) * 2);
+		fruits = (entity **)malloc(sizeof(entity *) * 2);
+		//--------------------
+
         for (int i = 0; i < n_lines; i++)
         {
             for (int a = 0; a < n_cols; a++)
             {   
-				if(getc(fp)=='B'){
+				c = getc(fp);
+				if(c == 'B'){
 
 					board_map[i][a] = get_newEntity(i, a, 6);
 					brick_counter++;
+					printf("b\n");
 				}
-				if(getc(fp)==' '){
+				else if( c == ' '){
 
 					board_map[i][a] = get_newEntity(i, a, -1);
 					free_space_counter++;
+					printf("space\n");
 				}
+				//FOR TESTING
+				
+				else if ( c =='P')
+				{
+					board_map[i][a] = get_newEntity(i, a, 5);
+					printf("p = %d %d", i, a);
+					board_map[i][a]->idx = pacman_counter;
+					board_map[i][a]->u_details = (user_details*)calloc(sizeof(user_details), 1);
+					pacmans[pacman_counter]=board_map[i][a];
+					pacman_counter++;
+					printf("p\n");
+				}
+				else if ( c =='M')
+				{	
+					printf("m = %d %d", i, a);
+					board_map[i][a] = get_newEntity(i, a, 3);
+					board_map[i][a]->idx = monster_counter;
+					board_map[i][a]->u_details = (user_details*)calloc(sizeof(user_details), 1);
+					monsters[monster_counter]=board_map[i][a];
+					monster_counter++;
+					printf("m\n");
+				}
+				else if ( c =='F')
+				{
+					board_map[i][a] = get_newEntity(i, a, 0);
+					board_map[i][a]->idx = fruit_counter;
+					board_map[i][a]->u_details = (user_details*)calloc(sizeof(user_details), 1);
+					fruits[fruit_counter]=board_map[i][a];
+					fruit_counter++;
+					printf("f\n");
+				}
+				
+				//---------------
             }
             getc(fp);
         }
-
         fclose(fp);
 
 		brick_list = (entity **)malloc(sizeof(entity *) * brick_counter);
@@ -130,30 +170,37 @@ int main(int argc , char* argv[]){
 
 		aux1=0;
 		aux2=0;
-
+		for (int i = 0; i < n_lines; i++)
+        {
+            for (int a = 0; a < n_cols; a++)
+            {   
+				if((board_map[i][a])->type == 6){	//é brick
+					brick_list[aux1] = board_map[i][a];
+					brick_list[aux1]->idx = aux1;
+					aux1++;
+				}
+				else if((board_map[i][a])->type == -1){	//é free space
+					free_space_list[aux2] = board_map[i][a];
+					free_space_list[aux2]->idx = aux2;
+					aux2++;
+				}
+            }
+        }
 		for (int i = 0; i < n_lines; i++)
         {
             for (int a = 0; a < n_cols; a++)
             {   
 				if((board_map[i][a])->type == 6){	//é brick
 
-					brick_list[aux1] = board_map[i][a];
-					aux1++;
+					printf("B");
 				}
-				else{	//é free space
+				else if((board_map[i][a])->type == -1){	//é free space
 
-					free_space_list[aux2] = board_map[i][a];
-					aux2++;
+					printf("_");
 				}
             }
+			printf("\n");
         }
-
-		printf("counter: %d\n\n", brick_counter);
-		for (int i = 0; i < brick_counter; i++)
-		{
-			printf("type: %d\n", brick_list[i]->type);
-		}
-		
 
 		server_socket = socket(AF_INET, SOCK_STREAM, 0);
 		if (server_socket == -1){
@@ -235,36 +282,96 @@ int main(int argc , char* argv[]){
 				}
 				if ((board_map[i][a])->type == 0)	//cherry
 				{
-					//paint cherry
+					paint_cherry(a, i);
 				}
 				if ((board_map[i][a])->type == 1)	//lemon
 				{
-					//paint lemon
+					paint_lemon(a, i);
 				}
 				if ((board_map[i][a])->type == 2)	//Pacman
 				{
-					//paint cherry
+					paint_pacman(a, i , 255, 140, 0);
 				}
-				if ((board_map[i][a])->type == 2)	//Monster
+				if ((board_map[i][a])->type == 3)	//Monster
 				{
-					//paint Monster
+					paint_monster(a, i , 206, 92, 248);
 				}
-				if ((board_map[i][a])->type == 4)	//Charged_Pacman
+				if ((board_map[i][a])->type == 4 || (board_map[i][a])->type == 5)	//Charged_Pacman
 				{
-					//paint Charged_Pacman
+					paint_powerpacman(a, i , 255, 0, 0);
 				}
 
             }//0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (MAXINT-1:Wall) | MAXINT:Wall | 
         }
+		
     }
 
 	//monster and packman position
-	int x = 0;
-	int y = 0;
+	
 
-	int x_other = 0;
-	int y_other = 0;
+	int* updates = (int*)malloc(sizeof(int) * 6); 
+	sleep(1);
+	for (int i = 0; i < 9; i++)	//mooooooooooves
+	{
+		handle_mov(3, 1, 2, board_map, n_lines, n_cols, pacmans, monsters, fruits, free_space_list, &fruit_counter, &free_space_counter, updates);
 
+		for (int a = 0; a < 6; a+=2)
+		{	
+			printf("update type: %d\n", updates[a]);
+			printf("update idx: %d\n\n", updates[a+1]);
+			if(updates[a] == -2){
+				break;
+			}
+			else{
+				//a = type
+				//a+1 = index
+
+				if (updates[a] == 0)	//cherry
+				{
+					paint_cherry(fruits[updates[a+1]]->column , fruits[updates[a+1]]->line);
+				}
+				else if (updates[a] == 1)	//lemon
+				{
+					paint_lemon(fruits[updates[a+1]]->column , fruits[updates[a+1]]->line);
+				}
+				else if (updates[a] == 2)	//Pacman
+				{
+					paint_pacman(pacmans[updates[a+1]]->column, pacmans[updates[a+1]]->line , 255, 140, 0);
+				}
+				else if (updates[a] == 3)	//Monster
+				{
+					paint_monster(monsters[updates[a+1]]->column, monsters[updates[a+1]]->line , 206, 92, 248);
+				}
+				else if (updates[a] == -1)	//space
+				{	
+					clear_place(free_space_list[updates[a+1]]->column, free_space_list[updates[a+1]]->line);
+					printf("free space col = %d\n", free_space_list[updates[a+1]]->column);
+					printf("free space col = %d\n", free_space_list[updates[a+1]]->line);
+				}
+				else if (updates[a] == 4 || updates[a] == 5)	//Charged_Pacman
+				{
+					paint_powerpacman(pacmans[updates[a+1]]->column, pacmans[updates[a+1]]->line , 255, 0, 0);
+				}
+			}
+		}
+		printf("\nMove %d\n", i);
+		printf("Pacman Score: %d\n", pacmans[0]->u_details->score);
+		printf("Good Monster Score: %d\n", monsters[0]->u_details->score);
+		//printf("Pacman, The Second Score: %d\n", pacmans[1]->u_details->score);
+		
+				
+		sleep(1);
+	}
+
+
+	sleep(5);
+
+
+
+
+
+
+/*
 	while (!done){
 		while (SDL_PollEvent(&event)) {
 			if(event.type == SDL_QUIT) {
@@ -274,6 +381,16 @@ int main(int argc , char* argv[]){
 			//------------
             
 
+
+
+
+
+
+
+
+
+
+			
 			if(event.type == Event_ShowCharacter){
 				message * data_ptr;
 				data_ptr = event.user.data1;
@@ -298,7 +415,7 @@ int main(int argc , char* argv[]){
 			
 			//handle_mov();
 
-			/*
+			
 			if(event.type == SDL_KEYDOWN){
 
 				if (event.key.keysym.sym == SDLK_DOWN)
@@ -350,10 +467,10 @@ int main(int argc , char* argv[]){
 				}
 				
 			}
-			*/
+			
             
 		}
-	}
+	}*/
 
 	printf("fim\n");
 	close_board_windows();
