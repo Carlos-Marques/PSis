@@ -76,9 +76,11 @@ int main(int argc , char* argv[]){
 
 	int fruit_counter = 0, monster_counter = 0, pacman_counter = 0; 
 
-	srand(785);
+	srand(2);
 
 	Event_ShowCharacter =  SDL_RegisterEvents(1);
+	Event_RespawnFruit = SDL_RegisterEvents(1);
+
 	if (argc == 2){
 
 		struct sockaddr_in server_local_addr;
@@ -131,7 +133,7 @@ int main(int argc , char* argv[]){
 				
 				else if ( c =='P')
 				{
-					board_map[i][a] = get_newEntity(i, a, 5);
+					board_map[i][a] = get_newEntity(i, a, 2);
 					printf("p = %d %d", i, a);
 					board_map[i][a]->idx = pacman_counter;
 					board_map[i][a]->u_details = (user_details*)calloc(sizeof(user_details), 1);
@@ -311,9 +313,9 @@ int main(int argc , char* argv[]){
 
 	int* updates = (int*)malloc(sizeof(int) * 6); 
 	sleep(1);
-	for (int i = 0; i < 9; i++)	//mooooooooooves
+	for (int i = 0; i < 6; i++)	//mooooooooooves
 	{
-		handle_mov(3, 1, 2, board_map, n_lines, n_cols, pacmans, monsters, fruits, free_space_list, &fruit_counter, &free_space_counter, updates);
+		handle_mov(2, 0, 3, board_map, n_lines, n_cols, pacmans, monsters, fruits, free_space_list, &fruit_counter, &free_space_counter, updates);
 
 		for (int a = 0; a < 6; a+=2)
 		{	
@@ -363,10 +365,26 @@ int main(int argc , char* argv[]){
 		sleep(1);
 	}
 
+	while (!done){
+		while (SDL_PollEvent(&event)) {
+			if(event.type == Event_RespawnFruit) {
+				respawn_fruit(updates, &free_space_counter, free_space_list, &fruit_counter, fruits);
+				if( updates[0] == 0 )	//cherry
+				{
+					paint_cherry(fruits[updates[1]]->column , fruits[updates[1]]->line);
+				}
+				else if( updates[0] == 1 )	//Lemon
+				{	
+					paint_lemon(fruits[updates[1]]->column , fruits[updates[1]]->line);
+				}
+				done=1;
+				break;
+			}
+		}
+	}
+	
 
-	sleep(5);
-
-
+sleep(5);
 
 
 

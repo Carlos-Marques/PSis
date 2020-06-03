@@ -1,5 +1,19 @@
 #include "gameLogic.h"
 
+void * fruitRespawn_Thread(){
+
+    pthread_t thread_id;
+    SDL_Event new_event;
+
+    sleep(2);
+
+    SDL_zero(new_event);
+    new_event.type = Event_RespawnFruit;
+    SDL_PushEvent(&new_event);
+}
+
+
+
 void handle_mov(int type, int idx, int dir, entity*** board_map, int n_lin, int n_col, entity** pacmans, entity** monsters, entity** fruits, entity** free_space_list, int* fruit_counter, int* free_space_counter, int* updates)
 {
     int random, destination_line, destination_column, aux, bounce = 0;
@@ -264,10 +278,11 @@ void switch_places(int destination_line, int destination_column, entity*** board
 
     updates[4] = -2;
 }
-
+//---------------------------------------
 void pacman_eats_fruit(int destination_line, int destination_column, entity*** board_map, entity* ent, int* updates, int** free_space_counter, entity** free_space_list, int** fruit_counter, entity** fruits){
 
     int aux;
+    pthread_t thread_id;
 
     //passar a estrutura da fruta para uma estrutura de free space e mudar as coordenadas
     board_map[destination_line][destination_column]->line = ent->line;
@@ -286,8 +301,6 @@ void pacman_eats_fruit(int destination_line, int destination_column, entity*** b
     }
     fruits[(**fruit_counter)-1] = NULL;
     (**fruit_counter)--;
-
-    //----------- tirar do array de frutas e meter no array de free_spaces
 
     board_map[ent->line][ent->column] = board_map[destination_line][destination_column];
 
@@ -308,11 +321,14 @@ void pacman_eats_fruit(int destination_line, int destination_column, entity*** b
     updates[1] = ent->idx;
 
     updates[4] = -2;    //vazio
-}
 
+    pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL);
+}
+//---------------------------------------
 void monster_eats_fruit(int destination_line, int destination_column, entity*** board_map, entity* ent, int* updates, int **free_space_counter, entity** free_space_list, int** fruit_counter, entity** fruits){
 
     int aux;
+    pthread_t thread_id;
     
     //passar a estrutura da fruta para uma estrutura de free space e mudar as coordenadas
     board_map[destination_line][destination_column]->line = ent->line;
@@ -332,8 +348,6 @@ void monster_eats_fruit(int destination_line, int destination_column, entity*** 
     fruits[(**fruit_counter)-1] = NULL;
     (**fruit_counter)--;
 
-    //----------- tirar do array de frutas e meter no array de free_spaces
-
     board_map[ent->line][ent->column] = board_map[destination_line][destination_column];
 
     updates[2] = board_map[ent->line][ent->column]->type;
@@ -351,6 +365,8 @@ void monster_eats_fruit(int destination_line, int destination_column, entity*** 
     updates[1] = ent->idx;
 
     updates[4] = -2;    //vazio
+
+    pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL);
 }
 
 void monster_eats_pacman(int destination_line, int destination_column, entity*** board_map, entity* ent, int* updates, int free_space_counter, entity** free_space_list){
@@ -482,4 +498,30 @@ void monster_into_superPacman(int destination_line, int destination_column, enti
     else{
         updates[4] = -2;
     }
+}
+
+void respawn_fruit(int* updates, int *free_space_counter, entity** free_space_list, int* fruit_counter, entity** fruits){
+
+    int random = (rand() % (*free_space_counter));
+    int new_fruit_type = rand() % 2;
+
+    //trocar o tipo para um de fruta
+    free_space_list[random]->type = new_fruit_type;
+    //apontar para a estrutura da nova fruta no array das frutas
+    fruits[(*fruit_counter)-1] = free_space_list[random];
+    //actualiza o index e o fruit counter
+    fruits[(*fruit_counter)-1]->idx = (*fruit_counter)-1;
+
+    updates[0] = new_fruit_type;
+    updates[1] = (*fruit_counter)-1;
+
+    (*fruit_counter)++;
+
+    //meter o espaço vazio dos free spaces a apontar para a ultima posição
+    free_space_list[random] = free_space_list[(*free_space_counter)-1];
+    free_space_list[random]->idx = random;
+    free_space_list[(*free_space_counter)-1] = NULL;
+    (*free_space_counter)--;
+
+    updates[2] = -2;
 }
