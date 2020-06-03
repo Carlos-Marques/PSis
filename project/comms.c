@@ -9,12 +9,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 #define PORT 8000
 #define DEBUG 1
 
-int client_sockets[100];
-int n_clients;
+typedef struct server_args {
+  int server_socket;
+  int ready;
+  int x_pacman;
+  int y_pacman;
+} server_args;
 
 typedef struct client_args {
   int client_socket;
@@ -23,7 +28,7 @@ typedef struct client_args {
 typedef struct event_struct {
   int dir;   // 0:down | 1:up | 2:left | 3:right |
   int type;  // 0:keyboard | 1:mouse |
-  int client_id;
+  entity* client;
 } event_struct;
 
 typedef struct event_message {
@@ -48,7 +53,12 @@ typedef struct client_data {
   coords* monster_coords;
 } client_data;
 
-Uint32 Event_Move, Event_NewUser, Event_Disconnect;
+typedef struct characters {
+  entity* pacman;
+  entity* monster;
+} characters;
+
+Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
 
 void send_NewClient(int n_clients, entity** pacmans, entity** monsters) {
   int message_type = 0, socket;
@@ -280,38 +290,111 @@ void rcv_AllFruits(int server_socket) {
   free(fruit);
 }
 
-void send_Move(int* updated, entity** pacmans, int n_clients) {
-  int message_type = 5, i, j;
+void send_Move(int* updated,
+               entity** pacmans,
+               entity** monsters,
+               int n_clients) {
+  int message_type, i, j;
+  coords updated_coords;
+  if (updated[0]) {
+    message_type = 5;  // Updated pacman
+    updated_coords.x = pacmans[updated[1]]->line;
+    updated_coords.y = pacmans[updated[1]]->column;
+  } else {
+    message_type = 6;
+    updated_coords.x = monsters[updated[1]]->line;
+    updated_coords.y = monsters[updated[1]]->column;
+  }
 
   for (i = 0; i < n_clients; i++) {
     send(pacmans[i]->u_details->client_socket, &message_type, sizeof(int), 0);
+    send(pacmans[i]->u_details->client_socket, &updated[1], sizeof(int), 0);
+    send(pacmans[i]->u_details->client_socket, &updated_coords, sizeof(coords),
+         0);
   }
 }
 
+void rcv_MovePacman(int server_socket, client_data** clients) {
+  int updated_idx;
+  coords updated_coords;
+
+  recv(server_socket, &updated_idx, sizeof(int), 0);
+  recv(server_socket, &updated_coords, sizeof(coords), 0);
+
+  clear_place(clients[updated_idx]->pacman_coords->y,
+              clients[updated_idx]->pacman_coords->x);
+  clients[updated_idx]->pacman_coords->x = updated_coords.x;
+  clients[updated_idx]->pacman_coords->y = updated_coords.y;
+  paint_pacman(clients[updated_idx]->pacman_coords->y,
+               clients[updated_idx]->pacman_coords->x,
+               clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
+               clients[updated_idx]->rgb->b);
+}
+
+void rcv_MoveMonster(int server_socket, client_data** clients) {
+  int updated_idx;
+  coords updated_coords;
+
+  recv(server_socket, &updated_idx, sizeof(int), 0);
+  recv(server_socket, &updated_coords, sizeof(coords), 0);
+
+  clear_place(clients[updated_idx]->monster_coords->y,
+              clients[updated_idx]->monster_coords->x);
+  clients[updated_idx]->monster_coords->x = updated_coords.x;
+  clients[updated_idx]->monster_coords->y = updated_coords.y;
+  paint_monster(clients[updated_idx]->monster_coords->y,
+                clients[updated_idx]->monster_coords->x,
+                clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
+                clients[updated_idx]->rgb->b);
+}
+
+void* inactivityThread(void* args) {
+  entity* character = args;
+
+  while (1) {
+    sleep(5);
+    SDL_Event new_event;
+    new_event.type = Event_Inactivity;
+    new_event.user.data1 = character;
+    SDL_PushEvent(&new_event);
+  }
+  return (NULL);
+}
+
 void* serverThread(void* args) {
-  int* server_socket = args;
+  server_args* server = args;
   int err_rcv, message_type;
   client_data* clients[100];
   int n_clients = 0;
-
   coords board_size;
-  recv(*server_socket, &board_size, sizeof(coords), 0);
+
+  recv(server->server_socket, &board_size, sizeof(coords), 0);
   printf("board: %d %d\n", board_size.x, board_size.y);
   create_board_window(board_size.y, board_size.x);
 
   printf("here\n");
-  while ((err_rcv = recv(*server_socket, &message_type, sizeof(int), 0)) > 0) {
+  while ((err_rcv =
+              recv(server->server_socket, &message_type, sizeof(int), 0)) > 0) {
     printf("message type: %d\n", message_type);
     if (message_type == 0) {
-      rcv_NewClient(clients, *server_socket, &n_clients);
+      rcv_NewClient(clients, server->server_socket, &n_clients);
+      if (!server->ready) {
+        server->x_pacman = clients[n_clients - 1]->pacman_coords->x;
+        server->y_pacman = clients[n_clients - 1]->pacman_coords->y;
+        server->ready = 1;
+      }
     } else if (message_type == 1) {
-      rcv_Disconnect(clients, *server_socket, &n_clients);
+      rcv_Disconnect(clients, server->server_socket, &n_clients);
     } else if (message_type == 2) {
-      rcv_AllClients(clients, *server_socket, &n_clients);
+      rcv_AllClients(clients, server->server_socket, &n_clients);
     } else if (message_type == 3) {
-      rcv_AllBricks(*server_socket);
+      rcv_AllBricks(server->server_socket);
     } else if (message_type == 4) {
-      rcv_AllFruits(*server_socket);
+      rcv_AllFruits(server->server_socket);
+    } else if (message_type == 5) {
+      rcv_MovePacman(server->server_socket, clients);
+    } else if (message_type == 6) {
+      rcv_MoveMonster(server->server_socket, clients);
     }
   }
 
@@ -322,32 +405,69 @@ void* clientThread(void* args) {
   event_message msg;
   int err_rcv;
   event_struct* event_data;
+  characters* chars = args;
   SDL_Event new_event;
-  entity* client = args;
+  time_t timeout = time(NULL);
+  int n_pacman_m = 0, n_monster_m = 0, valid = 0;
+  pthread_t thread_pacman, thread_monster;
 
   if (DEBUG)
     printf("just connected to the server\n");
 
-  while ((err_rcv = recv(client->u_details->client_socket, &msg,
-                         sizeof(event_message), 0)) > 0) {
-    if (DEBUG)
-      printf("received %d type: %d dir: %d\n", err_rcv, msg.type, msg.dir);
-    if (msg.dir >= 0 && msg.dir <= 4) {
-      event_data = malloc(sizeof(event_struct));
-      event_data->dir = msg.dir;
-      event_data->client_id = client->idx;
-      event_data->type = msg.type;
+  pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman);
+  pthread_create(&thread_monster, NULL, inactivityThread, chars->monster);
 
-      SDL_zero(new_event);
-      new_event.type = Event_Move;
-      new_event.user.data1 = event_data;
-      SDL_PushEvent(&new_event);
+  while ((err_rcv = recv(chars->pacman->u_details->client_socket, &msg,
+                         sizeof(event_message), 0)) > 0) {
+    if (msg.dir >= 0 && msg.dir <= 4) {
+      if ((time(NULL) - timeout) > 0) {
+        n_pacman_m = 0;
+        n_monster_m = 0;
+        timeout = time(NULL);
+      }
+      if (msg.type) {
+        if (n_pacman_m < 2) {
+          valid = 1;
+          pthread_cancel(thread_pacman);
+          pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman);
+          n_pacman_m++;
+        } else {
+          valid = 0;
+        }
+      } else {
+        if (n_monster_m < 2) {
+          valid = 1;
+          pthread_cancel(thread_monster);
+          pthread_create(&thread_monster, NULL, inactivityThread,
+                         chars->monster);
+          n_monster_m++;
+        } else {
+          valid = 0;
+        }
+      }
+
+      if (valid) {
+        if (DEBUG)
+          printf("received %d type: %d dir: %d\n", err_rcv, msg.type, msg.dir);
+        event_data = malloc(sizeof(event_struct));
+        event_data->dir = msg.dir;
+        event_data->client = chars->pacman;
+        event_data->type = msg.type;
+
+        SDL_zero(new_event);
+        new_event.type = Event_Move;
+        new_event.user.data1 = event_data;
+        SDL_PushEvent(&new_event);
+      }
     }
   }
 
+  pthread_cancel(thread_pacman);
+  pthread_cancel(thread_monster);
+
   SDL_zero(new_event);
   new_event.type = Event_Disconnect;
-  new_event.user.data1 = client;
+  new_event.user.data1 = chars->pacman;
   SDL_PushEvent(&new_event);
   return (NULL);
 }
@@ -421,6 +541,7 @@ void handle_NewUser(user_details* new_client_details,
   int random_idx;
   pthread_t thread_id;
   coords board_size;
+  characters* chars = malloc(sizeof(characters));
 
   // get random free space for entering pacman
   random_idx = random() % *n_free_spaces;
@@ -432,8 +553,11 @@ void handle_NewUser(user_details* new_client_details,
   free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
   free_spaces[random_idx]->idx = random_idx;
   (*n_free_spaces)--;
+  paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
+               pacmans[*n_clients]->u_details->r,
+               pacmans[*n_clients]->u_details->g,
+               pacmans[*n_clients]->u_details->b);
 
-  pthread_create(&thread_id, NULL, clientThread, pacmans[*n_clients]);
   // get random free space for entering monster
   random_idx = random() % *n_free_spaces;
   new_entity = free_spaces[random_idx];
@@ -444,6 +568,14 @@ void handle_NewUser(user_details* new_client_details,
   free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
   free_spaces[random_idx]->idx = random_idx;
   (*n_free_spaces)--;
+  paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
+                monsters[*n_clients]->u_details->r,
+                monsters[*n_clients]->u_details->g,
+                monsters[*n_clients]->u_details->b);
+
+  chars->pacman = pacmans[*n_clients];
+  chars->monster = monsters[*n_clients];
+  pthread_create(&thread_id, NULL, clientThread, chars);
 
   board_size.x = n_lines;
   board_size.y = n_cols;
@@ -482,6 +614,8 @@ void handle_Disconnect(entity** pacmans,
   close(new_entity->u_details->client_socket);
   free(new_entity->u_details);
   free_spaces[*n_free_spaces] = new_entity;
+  clear_place(free_spaces[*n_free_spaces]->column,
+              free_spaces[*n_free_spaces]->line);
   (*n_free_spaces)++;
 
   // get new free space with coords of leaving monster
@@ -489,6 +623,8 @@ void handle_Disconnect(entity** pacmans,
   new_entity->type = -1;
   new_entity->idx = *n_free_spaces;
   free_spaces[*n_free_spaces] = new_entity;
+  clear_place(free_spaces[*n_free_spaces]->column,
+              free_spaces[*n_free_spaces]->line);
   (*n_free_spaces)++;
 
   // move last member of array to leaving idx
@@ -500,6 +636,43 @@ void handle_Disconnect(entity** pacmans,
   (*n_clients)--;
 
   send_Disconnect(client_id, *n_clients, pacmans);
+}
+
+void handle_Inactivity(entity* character,
+                       entity** free_spaces,
+                       entity** pacmans,
+                       entity** monsters,
+                       entity*** board,
+                       int n_free_spaces,
+                       int n_clients) {
+  int rand_idx = random() % n_free_spaces;
+  int line = free_spaces[rand_idx]->line;
+  int column = free_spaces[rand_idx]->column;
+  int updated[2];
+
+  free_spaces[rand_idx]->line = character->line;
+  free_spaces[rand_idx]->column = character->column;
+  character->line = line;
+  character->column = column;
+
+  board[free_spaces[rand_idx]->line][free_spaces[rand_idx]->column] =
+      free_spaces[rand_idx];
+  board[character->line][character->column] = character;
+
+  clear_place(free_spaces[rand_idx]->column, free_spaces[rand_idx]->line);
+  if (character->type == 2) {
+    paint_pacman(character->column, character->line, character->u_details->r,
+                 character->u_details->g, character->u_details->b);
+    updated[0] = 1;
+    updated[1] = character->idx;
+  } else if (character->type == 3) {
+    paint_monster(character->column, character->line, character->u_details->r,
+                  character->u_details->g, character->u_details->b);
+    updated[0] = 0;
+    updated[1] = character->idx;
+  }
+
+  send_Move(updated, pacmans, monsters, n_clients);
 }
 
 int main(int argc, char* argv[]) {
@@ -514,6 +687,7 @@ int main(int argc, char* argv[]) {
   Event_Move = SDL_RegisterEvents(1);
   Event_NewUser = SDL_RegisterEvents(1);
   Event_Disconnect = SDL_RegisterEvents(1);
+  Event_Inactivity = SDL_RegisterEvents(1);
 
   if (argc == 2) {  // server
     FILE* fp;
@@ -622,6 +796,16 @@ int main(int argc, char* argv[]) {
           done = SDL_TRUE;
         } else if (event.type == Event_Move) {
           //  TODO: handle move event
+          event_struct* move_data;
+          int updated[2];
+          move_data = event.user.data1;
+          updated[0] = move_data->type;
+          updated[1] = move_data->client->idx;
+          if (updated[0]) {
+          } else {
+            monsters[updated[1]]->line++;
+          }
+          send_Move(updated, pacmans, monsters, n_clients);
         } else if (event.type == Event_NewUser) {
           user_details* client;
           client = event.user.data1;
@@ -635,6 +819,11 @@ int main(int argc, char* argv[]) {
           client = event.user.data1;
           handle_Disconnect(pacmans, monsters, free_spaces, n_lines, n_cols,
                             client->idx, &n_free_spaces, &n_clients);
+        } else if (event.type == Event_Inactivity) {
+          entity* character;
+          character = event.user.data1;
+          handle_Inactivity(character, free_spaces, pacmans, monsters, board,
+                            n_free_spaces, n_clients);
         }
       }
     }
@@ -684,55 +873,91 @@ int main(int argc, char* argv[]) {
     send(sock_fd, &g, sizeof(int), 0);
     send(sock_fd, &b, sizeof(int), 0);
 
-    pthread_create(&thread_id, NULL, serverThread, &sock_fd);
-    usleep(1000000);
-
     event_message move_msg;
-    int x = 4, y = 4;
+    server_args server;
+    time_t pacman_timer = time(NULL), monster_timer = time(NULL);
+    int n_pacman_m = 0, n_monster_m = 0;
+    int x = -1, y = -1;
+
+    server.server_socket = sock_fd;
+    server.ready = 0;
+
+    pthread_create(&thread_id, NULL, serverThread, &server);
 
     while (!done) {
-      while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-          done = SDL_TRUE;
-        } else if (event.type == SDL_KEYDOWN) {
-          move_msg.type = 0;
-          if (event.key.keysym.sym == SDLK_DOWN) {
-            printf("down!\n");
-            move_msg.dir = 0;
-          } else if (event.key.keysym.sym == SDLK_UP) {
-            printf("up!\n");
-            move_msg.dir = 1;
-          } else if (event.key.keysym.sym == SDLK_LEFT) {
-            printf("left!\n");
-            move_msg.dir = 2;
-          } else if (event.key.keysym.sym == SDLK_RIGHT) {
-            printf("right!\n");
-            move_msg.dir = 3;
-          }
-          send(sock_fd, &move_msg, sizeof(event_message), 0);
-        } else if (event.type == SDL_MOUSEMOTION) {
-          move_msg.type = 1;
-          int x_new, y_new;
-          // this fucntion return the place cwher the mouse cursor is
-          get_board_place(event.motion.x, event.motion.y, &x_new, &y_new);
-          // if the mluse moved toi anothe place
-          if ((x_new != x) || (y_new != y)) {
-            x = x_new;
-            y = y_new;
-            if (x_new - x > 0) {
-              printf("right! %d\n", x_new);
-              move_msg.dir = 3;
-            } else if (x_new - x < 0) {
-              printf("left!\n");
-              move_msg.dir = 2;
-            } else if (y_new - y > 0) {
-              printf("down!\n");
-              move_msg.dir = 0;
-            } else if (y_new - y < 0) {
-              printf("up!\n");
-              move_msg.dir = 1;
+      while (server.ready) {
+        while (SDL_PollEvent(&event)) {
+          if (event.type == SDL_QUIT) {
+            done = SDL_TRUE;
+            server.ready = 0;
+          } else if (event.type == SDL_KEYDOWN) {
+            move_msg.type = 0;
+            if ((time(NULL) - monster_timer) > 0) {
+              monster_timer = time(NULL);
+              n_monster_m = 0;
             }
-            send(sock_fd, &move_msg, sizeof(event_message), 0);
+            if (n_monster_m < 2) {
+              if (event.key.keysym.sym == SDLK_DOWN) {
+                printf("down!\n");
+                move_msg.dir = 0;
+                n_monster_m++;
+                send(sock_fd, &move_msg, sizeof(event_message), 0);
+              } else if (event.key.keysym.sym == SDLK_UP) {
+                printf("up!\n");
+                move_msg.dir = 1;
+                n_monster_m++;
+                send(sock_fd, &move_msg, sizeof(event_message), 0);
+              } else if (event.key.keysym.sym == SDLK_LEFT) {
+                printf("left!\n");
+                move_msg.dir = 2;
+                n_monster_m++;
+                send(sock_fd, &move_msg, sizeof(event_message), 0);
+              } else if (event.key.keysym.sym == SDLK_RIGHT) {
+                printf("right!\n");
+                move_msg.dir = 3;
+                n_monster_m++;
+                send(sock_fd, &move_msg, sizeof(event_message), 0);
+              }
+            }
+          } else if (event.type == SDL_MOUSEMOTION) {
+            move_msg.type = 1;
+            int x_new, y_new;
+            // this fucntion return the place cwher the mouse cursor is
+            get_board_place(event.motion.x, event.motion.y, &x_new, &y_new);
+            // if the mluse moved toi anothe place
+            if ((x_new != x) || (y_new != y)) {
+              x = x_new;
+              y = y_new;
+              if ((time(NULL) - pacman_timer) > 0) {
+                pacman_timer = time(NULL);
+                n_pacman_m = 0;
+              }
+              if (n_pacman_m < 2) {
+                int delta_x = x_new - server.x_pacman;
+                int delta_y = y_new - server.y_pacman;
+                if (delta_x == 1 && delta_y == 0) {
+                  printf("right! %d\n", x_new);
+                  move_msg.dir = 3;
+                  n_pacman_m++;
+                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+                } else if (delta_x == -1 && delta_y == 0) {
+                  printf("left!\n");
+                  move_msg.dir = 2;
+                  n_pacman_m++;
+                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+                } else if (delta_y == 1 && delta_x == 0) {
+                  printf("down!\n");
+                  move_msg.dir = 0;
+                  n_pacman_m++;
+                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+                } else if (delta_y == -1 && delta_x == 0) {
+                  printf("up!\n");
+                  move_msg.dir = 1;
+                  n_pacman_m++;
+                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+                }
+              }
+            }
           }
         }
       }
