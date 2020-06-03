@@ -1,2 +1,5 @@
-pacman: pacman.c pacman_structs.c UI_library.c
-	gcc pacman.c pacman_structs.c UI_library.c -o pacman -lSDL2 -lSDL2_image -pthread
+client: client.c client_comms.c pacman_structs.c UI_library.c
+	gcc client.c client_comms.c pacman_structs.c UI_library.c -o client -lSDL2 -lSDL2_image -pthread
+
+server: server.c server_comms.c pacman_structs.c UI_library.c
+	gcc server.c server_comms.c pacman_structs.c UI_library.c -o server -lSDL2 -lSDL2_image -pthread

@@ -1,5 +1,3 @@
-#include "comms.h"
-
 #include "server_comms.h"
 
 void* inactivityThread(void* args);
