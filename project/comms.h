@@ -10,7 +10,7 @@
 #include "UI_library.h"
 #include "pacman_structs.h"
 
-#define PORT 6000
+#define PORT 8001
 #define DEBUG 1
 
 typedef struct server_args {

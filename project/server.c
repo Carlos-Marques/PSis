@@ -2,6 +2,19 @@
 
 Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
 
+// TODO: add fruits - Carlos
+// TODO: limit colors - Espadinha
+// TODO: limit number of players to free spaces - Carlos
+// TODO: check sends and recvs - Espadinha
+// TODO: fix mouse movement when too quick - Carlos
+// TODO: fix movement delay - Carlos
+// TODO: fix server.x updates - Carlos
+// TODO: fix pacman and monster switch in client - Carlos
+// TODO: send score - Espadinha
+// TODO: superpacman message - Carlos
+// TODO: fix handle move - Carlos
+// TODO: frees - Espadinha
+
 void* inactivityThread(void* args) {
   entity* character = args;
 
@@ -411,54 +424,68 @@ int main(int argc, char* argv[]) {
           done = SDL_TRUE;
         } else if (event.type == Event_Move) {
           //  TODO: handle move event
-          
+
           move_data = event.user.data1;
 
-          if (move_data->type)  //pacman
+          if (move_data->type)  // pacman
           {
-            handle_mov(pacmans[move_data->client->idx]->type, move_data->client->idx, move_data->dir, board, n_lines, n_cols, pacmans, monsters, fruits,
-               free_spaces, &n_fruits, &n_free_spaces, updates);
-          }
-          else    //monster
+            printf("handling\n");
+            handle_mov(pacmans[move_data->client->idx]->type,
+                       move_data->client->idx, move_data->dir, board, n_lines,
+                       n_cols, pacmans, monsters, fruits, free_spaces,
+                       &n_fruits, &n_free_spaces, updates);
+            printf("Failed here\n");
+          } else  // monster
           {
-            handle_mov(monsters[move_data->client->idx]->type, move_data->client->idx, move_data->dir, board, n_lines, n_cols, pacmans, monsters, fruits,
-               free_spaces, &n_fruits, &n_free_spaces, updates);
+            printf("handling\n");
+            handle_mov(monsters[move_data->client->idx]->type,
+                       move_data->client->idx, move_data->dir, board, n_lines,
+                       n_cols, pacmans, monsters, fruits, free_spaces,
+                       &n_fruits, &n_free_spaces, updates);
+            printf("Failed here\n");
           }
-          
 
-          
-
-          for (int a = 0; updates[a] != -2; a += 2){
-
+          printf("updated %d\n", updates[5]);
+          for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
             if (updates[a] == 0)  // cherry
             {
               paint_cherry(fruits[updates[a + 1]]->column,
-                          fruits[updates[a + 1]]->line);
+                           fruits[updates[a + 1]]->line);
             } else if (updates[a] == 1)  // lemon
             {
               paint_lemon(fruits[updates[a + 1]]->column,
                           fruits[updates[a + 1]]->line);
-            } 
+            }
             //-------------
             else if (updates[a] == 2)  // Pacman
             {
+              printf("pacman\n");
               paint_pacman(pacmans[updates[a + 1]]->column,
-                          pacmans[updates[a + 1]]->line, pacmans[updates[a + 1]]->u_details->r, pacmans[updates[a + 1]]->u_details->g, pacmans[updates[a + 1]]->u_details->b);
+                           pacmans[updates[a + 1]]->line,
+                           pacmans[updates[a + 1]]->u_details->r,
+                           pacmans[updates[a + 1]]->u_details->g,
+                           pacmans[updates[a + 1]]->u_details->b);
 
               to_send[0] = 1;
-              to_send[1] = updates[a+1];
+              to_send[1] = updates[a + 1];
 
               send_Move(to_send, pacmans, monsters, n_clients);
+              printf("pacman sent\n");
 
             } else if (updates[a] == 3)  // Monster
             {
+              printf("monster\n");
               paint_monster(monsters[updates[a + 1]]->column,
-                            monsters[updates[a + 1]]->line, monsters[updates[a + 1]]->u_details->r, monsters[updates[a + 1]]->u_details->g, monsters[updates[a + 1]]->u_details->b);
+                            monsters[updates[a + 1]]->line,
+                            monsters[updates[a + 1]]->u_details->r,
+                            monsters[updates[a + 1]]->u_details->g,
+                            monsters[updates[a + 1]]->u_details->b);
 
               to_send[0] = 0;
-              to_send[1] = updates[a+1];
+              to_send[1] = updates[a + 1];
               send_Move(to_send, pacmans, monsters, n_clients);
-              
+
+              printf("monster sent\n");
             } else if (updates[a] == -1)  // space
             {
               clear_place(free_spaces[updates[a + 1]]->column,
@@ -470,10 +497,11 @@ int main(int argc, char* argv[]) {
                                 pacmans[updates[a + 1]]->line, 255, 0, 0);
 
               to_send[0] = 2;
-              to_send[1] = updates[a+1];
+              to_send[1] = updates[a + 1];
               send_Move(to_send, pacmans, monsters, n_clients);
             }
           }
+          printf("done updating\n");
         } else if (event.type == Event_NewUser) {
           user_details* client;
           client = event.user.data1;
