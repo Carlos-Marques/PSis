@@ -313,7 +313,7 @@ int main(int argc , char* argv[]){
 
 	int* updates = (int*)malloc(sizeof(int) * 6); 
 	sleep(1);
-	for (int i = 0; i < 6; i++)	//mooooooooooves
+	for (int i = 0; i < 7; i++)	//mooooooooooves
 	{
 		handle_mov(2, 0, 3, board_map, n_lines, n_cols, pacmans, monsters, fruits, free_space_list, &fruit_counter, &free_space_counter, updates);
 
