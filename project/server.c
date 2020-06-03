@@ -6,7 +6,7 @@ void* inactivityThread(void* args) {
   entity* character = args;
 
   while (1) {
-    sleep(5);
+    sleep(10);
     SDL_Event new_event;
     new_event.type = Event_Inactivity;
     new_event.user.data1 = character;
@@ -350,7 +350,6 @@ int main(int argc, char* argv[]) {
 
     int aux1 = 0;
     int aux2 = 0;
-    int aux3 = 0;
 
     for (int i = 0; i < n_lines; i++) {
       for (int a = 0; a < n_cols; a++) {
@@ -361,9 +360,6 @@ int main(int argc, char* argv[]) {
         } else if (board[i][a]->type == -1) {  //é free space
           free_spaces[aux2] = board[i][a];
           aux2++;
-        } else if (board[i][a]->type == 0 || board[i][a]->type == 1) {
-          fruits[aux3] = board[i][a];
-          aux3++;
         }
       }
     }
@@ -376,6 +372,7 @@ int main(int argc, char* argv[]) {
           {
             paint_brick(a, i);
           }
+          /*
           if ((board[i][a])->type == 0)  // cherry
           {
             // paint cherry
@@ -396,6 +393,7 @@ int main(int argc, char* argv[]) {
           {
             // paint Charged_Pacman
           }
+          */
 
         }  // 0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (MAXINT-1:Wall) |
            // MAXINT:Wall |
@@ -403,6 +401,9 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_create(&thread_id, NULL, connectionThread, NULL);
+    event_struct* move_data;
+    int* updates = (int*)malloc(sizeof(int) * 6);
+    int to_send[2];
 
     while (!done) {
       while (SDL_PollEvent(&event)) {
@@ -410,23 +411,69 @@ int main(int argc, char* argv[]) {
           done = SDL_TRUE;
         } else if (event.type == Event_Move) {
           //  TODO: handle move event
-          event_struct* move_data;
-          int updated[2];
+          
           move_data = event.user.data1;
-          updated[0] = move_data->type;
-          updated[1] = move_data->client->idx;
-          if (updated[0]) {
-          } else {
-            clear_place(monsters[updated[1]]->column,
-                        monsters[updated[1]]->line);
-            monsters[updated[1]]->line++;
-            paint_monster(monsters[updated[1]]->column,
-                          monsters[updated[1]]->line,
-                          monsters[updated[1]]->u_details->r,
-                          monsters[updated[1]]->u_details->g,
-                          monsters[updated[1]]->u_details->b);
+
+          if (move_data->type)  //pacman
+          {
+            handle_mov(pacmans[move_data->client->idx]->type, move_data->client->idx, move_data->dir, board, n_lines, n_cols, pacmans, monsters, fruits,
+               free_spaces, &n_fruits, &n_free_spaces, updates);
           }
-          send_Move(updated, pacmans, monsters, n_clients);
+          else    //monster
+          {
+            handle_mov(monsters[move_data->client->idx]->type, move_data->client->idx, move_data->dir, board, n_lines, n_cols, pacmans, monsters, fruits,
+               free_spaces, &n_fruits, &n_free_spaces, updates);
+          }
+          
+
+          
+
+          for (int a = 0; updates[a] != -2; a += 2){
+
+            if (updates[a] == 0)  // cherry
+            {
+              paint_cherry(fruits[updates[a + 1]]->column,
+                          fruits[updates[a + 1]]->line);
+            } else if (updates[a] == 1)  // lemon
+            {
+              paint_lemon(fruits[updates[a + 1]]->column,
+                          fruits[updates[a + 1]]->line);
+            } 
+            //-------------
+            else if (updates[a] == 2)  // Pacman
+            {
+              paint_pacman(pacmans[updates[a + 1]]->column,
+                          pacmans[updates[a + 1]]->line, pacmans[updates[a + 1]]->u_details->r, pacmans[updates[a + 1]]->u_details->g, pacmans[updates[a + 1]]->u_details->b);
+
+              to_send[0] = 1;
+              to_send[1] = updates[a+1];
+
+              send_Move(to_send, pacmans, monsters, n_clients);
+
+            } else if (updates[a] == 3)  // Monster
+            {
+              paint_monster(monsters[updates[a + 1]]->column,
+                            monsters[updates[a + 1]]->line, monsters[updates[a + 1]]->u_details->r, monsters[updates[a + 1]]->u_details->g, monsters[updates[a + 1]]->u_details->b);
+
+              to_send[0] = 0;
+              to_send[1] = updates[a+1];
+              send_Move(to_send, pacmans, monsters, n_clients);
+              
+            } else if (updates[a] == -1)  // space
+            {
+              clear_place(free_spaces[updates[a + 1]]->column,
+                          free_spaces[updates[a + 1]]->line);
+
+            } else if (updates[a] == 4 || updates[a] == 5)  // Charged_Pacman
+            {
+              paint_powerpacman(pacmans[updates[a + 1]]->column,
+                                pacmans[updates[a + 1]]->line, 255, 0, 0);
+
+              to_send[0] = 2;
+              to_send[1] = updates[a+1];
+              send_Move(to_send, pacmans, monsters, n_clients);
+            }
+          }
         } else if (event.type == Event_NewUser) {
           user_details* client;
           client = event.user.data1;

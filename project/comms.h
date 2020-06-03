@@ -8,9 +8,9 @@
 #include <time.h>
 #include <unistd.h>
 #include "UI_library.h"
-#include "pacman.h"
+#include "pacman_structs.h"
 
-#define PORT 8000
+#define PORT 6000
 #define DEBUG 1
 
 typedef struct server_args {

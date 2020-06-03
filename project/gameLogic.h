@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-
-#include "pacman_structs.h"
+#include "server_comms.h"
 
 Uint32 Event_RespawnFruit;
 

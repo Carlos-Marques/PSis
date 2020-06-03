@@ -4,7 +4,7 @@ void* serverThread(void* args) {
   server_args* server = args;
   int err_rcv, message_type;
   client_data* clients[100];
-  int n_clients = 0;
+  int n_clients = 0, id;
   coords board_size;
 
   recv(server->server_socket, &board_size, sizeof(coords), 0);
@@ -21,6 +21,7 @@ void* serverThread(void* args) {
         server->x_pacman = clients[n_clients - 1]->pacman_coords->x;
         server->y_pacman = clients[n_clients - 1]->pacman_coords->y;
         server->ready = 1;
+        id = n_clients - 1;
       }
     } else if (message_type == 1) {
       rcv_Disconnect(clients, server->server_socket, &n_clients);
@@ -32,6 +33,8 @@ void* serverThread(void* args) {
       rcv_AllFruits(server->server_socket);
     } else if (message_type == 5) {
       rcv_MovePacman(server->server_socket, clients);
+      server->x_pacman = clients[id]->pacman_coords->x;
+      server->y_pacman = clients[id]->pacman_coords->y;
     } else if (message_type == 6) {
       rcv_MoveMonster(server->server_socket, clients);
     }
@@ -148,8 +151,19 @@ int main(int argc, char* argv[]) {
                 n_pacman_m = 0;
               }
               if (n_pacman_m < 2) {
-                int delta_x = x_new - server.x_pacman;
-                int delta_y = y_new - server.y_pacman;
+
+                printf("ser-x-pacman = %d \n", server.x_pacman);
+                printf("ser-y-pacman = %d \n", server.y_pacman);
+                printf("x-new = %d \n", x_new);
+                printf("y-new = %d \n", y_new);
+                
+                
+                
+                
+                
+                int delta_x = x_new - server.y_pacman;
+                int delta_y = y_new - server.x_pacman;
+
                 if (delta_x == 1 && delta_y == 0) {
                   printf("right! %d\n", x_new);
                   move_msg.dir = 3;

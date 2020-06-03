@@ -116,14 +116,19 @@ void send_Move(int* updated,
                int n_clients) {
   int message_type, i, j;
   coords updated_coords;
-  if (updated[0]) {
+  
+  if (updated[0] == 1) {
     message_type = 5;  // Updated pacman
     updated_coords.x = pacmans[updated[1]]->line;
     updated_coords.y = pacmans[updated[1]]->column;
-  } else {
+  } else if(updated[0] == 0){
     message_type = 6;
     updated_coords.x = monsters[updated[1]]->line;
     updated_coords.y = monsters[updated[1]]->column;
+  } else if (updated[0] == 2){
+    message_type = 7;  // Updated pacman
+    updated_coords.x = pacmans[updated[1]]->line;
+    updated_coords.y = pacmans[updated[1]]->column;
   }
 
   for (i = 0; i < n_clients; i++) {

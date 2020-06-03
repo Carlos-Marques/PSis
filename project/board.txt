@@ -5,8 +5,8 @@ B B
    B BB   
   BB B    
    B B B  
-CL      B 
         B 
- C L  BBB 
+        B 
+      BBB 
           
 

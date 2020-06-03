@@ -1,4 +1,5 @@
-#include "server_comms.h"
+
+#include "gameLogic.h"
 
 void* inactivityThread(void* args);
 
