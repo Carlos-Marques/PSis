@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef struct message {
   int character;  // 2 pacman 3 monster
@@ -38,4 +39,4 @@ entity* get_newEntity(int x, int y, int type, int idx, user_details* u_details);
 
 user_details* get_newUser(int socket, int r, int g, int b);
 
-void free_board(entity**** ent, int n_lin, int n_col);
+void free_memory(entity*** board, int n_lin, int n_col, entity** free_spaces, entity** pacmans, entity** bricks, int n_clients);

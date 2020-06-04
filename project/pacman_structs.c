@@ -30,12 +30,21 @@ user_details* get_newUser(int socket, int r, int g, int b) {
   return u_details;
 }
 
-void free_board(entity**** ent, int n_lin, int n_col) {
+void free_memory(entity*** board, int n_lin, int n_col, entity** free_spaces, entity** pacmans, entity** bricks, int n_clients) {
+  
+  for (int i = 0; i < n_clients; i++)
+  {
+    free(pacmans[i]->u_details);
+    close(pacmans[i]->u_details->client_socket);
+  }
+
   for (int i = 0; i < n_lin; i++) {
     for (int a = 0; a < n_col; a++) {
-      free((*ent)[i][a]);
+      free(board[i][a]);
     }
-    free((*ent)[i]);
+    free(board[i]);
   }
-  free(*ent);
+  free(board);
+  free(free_spaces);
+  free(bricks);
 }

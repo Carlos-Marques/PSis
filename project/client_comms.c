@@ -240,7 +240,7 @@ void rcv_ScoreBoard(int server_socket, int n_clients) {
       exit(EXIT_FAILURE);
     }
 
-    printf("\x1b[38;2;%d;%d;%dmUser %d: %d\x1b[0m\n", color.r, color.g, color.b,
+    printf("\x1b[38;2;%d;%d;%dmUser %d:\x1b[0m %d\n", color.r, color.g, color.b,
            u.id, u.score);
   }
 }

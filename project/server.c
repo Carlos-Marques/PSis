@@ -5,16 +5,16 @@ Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
 
 // DONE: add fruits - Carlos
 // DONE: send new fruit - Carlos
-// TODO: limit colors - Espadinha
+// DONE: limit colors - Espadinha
 // DONE: limit number of players to free spaces - Carlos
-// TODO: check sends and recvs - Espadinha
+// DONE: check sends and recvs - Espadinha
 // DONE: fix mouse movement when too quick - Carlos
-// DON: fix movement delay - Carlos
+// DONE: fix movement delay - Carlos
 // DONE: fix server.x updates - Carlos
 // DONE: fix pacman and monster switch in client - Carlos
-// TODO: send score - Espadinha
+// DONE: send score - Espadinha
 // DONE: superpacman message - Carlos
-// TODO: fix handle move - Espadinha
+// DONE: fix handle move - Espadinha
 // TODO: frees - Espadinha
 
 void* scoreboardTimerThread() {
@@ -113,6 +113,7 @@ void* clientThread(void* args) {
   new_event.type = Event_Disconnect;
   new_event.user.data1 = chars->pacman;
   SDL_PushEvent(&new_event);
+  free(chars);
   return (NULL);
 }
 
@@ -158,8 +159,6 @@ void* connectionThread() {
     if (DEBUG)
       printf("accepted connection \n");
 
-    SDL_zero(new_event);
-    new_event.type = Event_NewUser;
     if (recv(client_socket, &r, sizeof(int), 0) == -1) {
       perror("ERROR");
       exit(EXIT_FAILURE);
@@ -172,9 +171,28 @@ void* connectionThread() {
       perror("ERROR");
       exit(EXIT_FAILURE);
     }
-    client = get_newUser(client_socket, r, g, b);
-    new_event.user.data1 = client;
-    SDL_PushEvent(&new_event);
+
+    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+      
+      coords board_size;
+
+      board_size.x = -2;
+      board_size.y = -2;
+
+      if (send(client_socket, &board_size, sizeof(coords), 0) == -1) {
+        perror("ERROR\n");
+        exit(EXIT_FAILURE);
+      }
+      printf("A new user tried to connect with an invalid code RGB not valid!\n");
+      close(client_socket);
+    }
+    else{
+      SDL_zero(new_event);
+      new_event.type = Event_NewUser;
+      client = get_newUser(client_socket, r, g, b);
+      new_event.user.data1 = client;
+      SDL_PushEvent(&new_event);
+    }
   }
 }
 
@@ -384,141 +402,121 @@ int main(int argc, char* argv[]) {
   Event_Inactivity = SDL_RegisterEvents(1);
   Event_ScoreBoard = SDL_RegisterEvents(1);
 
-  if (argc == 2) {  // server
-    FILE* fp;
-    fp = fopen(argv[1], "r");
-    if (fp == NULL) {
-      printf("error: cannot open file\n");
-      exit(1);
-    }
-
-    fscanf(fp, "%d %d", &n_cols, &n_lines);
-    getc(fp);
-
-    board = (entity***)malloc(sizeof(entity**) * n_lines);
-
-    for (int i = 0; i < n_lines; i++) {
-      board[i] = (entity**)malloc(sizeof(entity*) * n_cols);
-    }
-
-    for (int i = 0; i < n_lines; i++) {
-      for (int a = 0; a < n_cols; a++) {
-        c = getc(fp);
-        if (c == 'B') {
-          board[i][a] = get_newEntity(i, a, 6, n_bricks, NULL);
-          n_bricks++;
-        }
-        if (c == ' ') {
-          board[i][a] = get_newEntity(i, a, -1, n_free_spaces, NULL);
-          n_free_spaces++;
-        }
-        if (c == 'L') {
-          board[i][a] = get_newEntity(i, a, 0, n_fruits, NULL);
-          n_fruits++;
-        }
-        if (c == 'C') {
-          board[i][a] = get_newEntity(i, a, 1, n_fruits, NULL);
-          n_fruits++;
-        }
-      }
-      getc(fp);
-    }
-
-    fclose(fp);
-
-    bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
-    free_spaces = (entity**)malloc(sizeof(entity*) * n_free_spaces);
-
-    int aux1 = 0;
-    int aux2 = 0;
-
-    for (int i = 0; i < n_lines; i++) {
-      for (int a = 0; a < n_cols; a++) {
-        if ((board[i][a])->type == 6) {  //é brick
-
-          bricks[aux1] = board[i][a];
-          aux1++;
-        } else if (board[i][a]->type == -1) {  //é free space
-          free_spaces[aux2] = board[i][a];
-          aux2++;
-        }
-      }
-    }
-    create_board_window(n_cols, n_lines);
-
-    for (int i = 0; i < n_lines; i++) {
-      for (int a = 0; a < n_cols; a++) {
-        if ((board[i][a]) != NULL) {
-          if ((board[i][a])->type == 6)  // brick
-          {
-            paint_brick(a, i);
-          }
-          /*
-          if ((board[i][a])->type == 0)  // cherry
-          {
-            // paint cherry
-          }
-          if ((board[i][a])->type == 1)  // lemon
-          {
-            // paint lemon
-          }
-          if ((board[i][a])->type == 2)  // Pacman
-          {
-            // paint cherry
-          }
-          if ((board[i][a])->type == 2)  // Monster
-          {
-            // paint Monster
-          }
-          if ((board[i][a])->type == 4)  // Charged_Pacman
-          {
-            // paint Charged_Pacman
-          }
-          */
-
-        }  // 0:Cherry | 1:Lemon | 2:Pacman | 3:Monster | (MAXINT-1:Wall) |
-           // MAXINT:Wall |
-      }
-    }
-
-    pthread_create(&thread_id, NULL, connectionThread, NULL);
-    pthread_create(&thread_id, NULL, scoreboardTimerThread, NULL);
-
-    while (!done) {
-      while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-          done = SDL_TRUE;
-        } else if (event.type == Event_Move) {
-          handle_mov_init(event.user.data1, board, n_lines, n_cols, pacmans,
-                          monsters, fruits, free_spaces, &n_fruits,
-                          &n_free_spaces, n_clients);
-        } else if (event.type == Event_NewUser) {
-          user_details* client;
-          client = event.user.data1;
-          if (DEBUG)
-            printf("fd %d\n", client->client_socket);
-          handle_NewUser(client, pacmans, monsters, free_spaces, bricks, fruits,
-                         &n_clients, &n_free_spaces, n_bricks, &n_fruits,
-                         n_lines, n_cols, &fruit_cap);
-        } else if (event.type == Event_Disconnect) {
-          entity* client;
-          client = event.user.data1;
-          handle_Disconnect(pacmans, monsters, free_spaces, n_lines, n_cols,
-                            client->idx, &n_free_spaces, &n_clients);
-        } else if (event.type == Event_Inactivity) {
-          entity* character;
-          character = event.user.data1;
-          handle_Inactivity(character, free_spaces, pacmans, monsters, board,
-                            n_free_spaces, n_clients);
-        } else if (event.type == Event_RespawnFruit) {
-          respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits);
-          send_Fruit(fruits, n_fruits, pacmans, n_clients);
-        } else if (event.type == Event_ScoreBoard) {
-          handle_ScoreBoard(n_clients, pacmans);
-        }
-      }
-    }
-  } else {
-    exit(-1);
+  if (argc != 2){   // number of args verification
+    printf("Incorrect number of arguments\n");
+    exit(1);
   }
+
+  FILE* fp;
+  fp = fopen(argv[1], "r");
+  if (fp == NULL) {
+    printf("error: cannot open file\n");
+    exit(1);
+  }
+
+  fscanf(fp, "%d %d", &n_cols, &n_lines);
+  getc(fp);
+
+  board = (entity***)malloc(sizeof(entity**) * n_lines);
+
+  for (int i = 0; i < n_lines; i++) {
+    board[i] = (entity**)malloc(sizeof(entity*) * n_cols);
+  }
+
+  for (int i = 0; i < n_lines; i++) {
+    for (int a = 0; a < n_cols; a++) {
+      c = getc(fp);
+      if (c == 'B') {
+        board[i][a] = get_newEntity(i, a, 6, n_bricks, NULL);
+        n_bricks++;
+      }
+      if (c == ' ') {
+        board[i][a] = get_newEntity(i, a, -1, n_free_spaces, NULL);
+        n_free_spaces++;
+      }
+      if (c == 'L') {
+        board[i][a] = get_newEntity(i, a, 0, n_fruits, NULL);
+        n_fruits++;
+      }
+      if (c == 'C') {
+        board[i][a] = get_newEntity(i, a, 1, n_fruits, NULL);
+        n_fruits++;
+      }
+    }
+    getc(fp);
+  }
+
+  fclose(fp);
+
+  bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
+  free_spaces = (entity**)malloc(sizeof(entity*) * n_free_spaces);
+
+  int aux1 = 0;
+  int aux2 = 0;
+
+  for (int i = 0; i < n_lines; i++) {
+    for (int a = 0; a < n_cols; a++) {
+      if ((board[i][a])->type == 6) {  //é brick
+
+        bricks[aux1] = board[i][a];
+        aux1++;
+      } else if (board[i][a]->type == -1) {  //é free space
+        free_spaces[aux2] = board[i][a];
+        aux2++;
+      }
+    }
+  }
+  create_board_window(n_cols, n_lines);
+
+  for (int i = 0; i < n_lines; i++) {
+    for (int a = 0; a < n_cols; a++) {
+        if ((board[i][a])->type == 6)  // brick
+        {
+          paint_brick(a, i);
+        }
+    }
+  }
+
+  pthread_create(&thread_id, NULL, connectionThread, NULL);
+  pthread_create(&thread_id, NULL, scoreboardTimerThread, NULL);
+
+  while (!done) {
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        done = SDL_TRUE;
+      } else if (event.type == Event_Move) {
+        handle_mov_init(event.user.data1, board, n_lines, n_cols, pacmans,
+                        monsters, fruits, free_spaces, &n_fruits,
+                        &n_free_spaces, n_clients);
+
+        free(event.user.data1);
+      } else if (event.type == Event_NewUser) {
+        user_details* client;
+        client = event.user.data1;
+        if (DEBUG)
+          printf("fd %d\n", client->client_socket);
+        handle_NewUser(client, pacmans, monsters, free_spaces, bricks, fruits,
+                        &n_clients, &n_free_spaces, n_bricks, &n_fruits,
+                        n_lines, n_cols, &fruit_cap);
+      } else if (event.type == Event_Disconnect) {
+        entity* client;
+        client = event.user.data1;
+        handle_Disconnect(pacmans, monsters, free_spaces, n_lines, n_cols,
+                          client->idx, &n_free_spaces, &n_clients);
+      } else if (event.type == Event_Inactivity) {
+        entity* character;
+        character = event.user.data1;
+        handle_Inactivity(character, free_spaces, pacmans, monsters, board,
+                          n_free_spaces, n_clients);
+      } else if (event.type == Event_RespawnFruit) {
+        respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits);
+        send_Fruit(fruits, n_fruits, pacmans, n_clients);
+      } else if (event.type == Event_ScoreBoard) {
+        handle_ScoreBoard(n_clients, pacmans);
+      }
+    }
+  }
+
+  free_memory(board, n_lines, n_cols, free_spaces, pacmans, bricks, n_clients);
+  //TO DO FREE PACMANS AND MONSTERS AND FRUITS
 }
