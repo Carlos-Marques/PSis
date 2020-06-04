@@ -1,6 +1,7 @@
 #include "server.h"
 
-Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
+Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
+    Event_ScoreBoard;
 
 // DONE: add fruits - Carlos
 // DONE: send new fruit - Carlos
@@ -15,6 +16,17 @@ Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
 // DONE: superpacman message - Carlos
 // TODO: fix handle move - Espadinha
 // TODO: frees - Espadinha
+
+void* scoreboardTimerThread() {
+  SDL_Event new_event;
+  new_event.type = Event_ScoreBoard;
+
+  while (1) {
+    sleep(5);
+    SDL_PushEvent(&new_event);
+  }
+  return (NULL);
+}
 
 void* inactivityThread(void* args) {
   entity* character = args;
@@ -89,6 +101,10 @@ void* clientThread(void* args) {
       }
     }
   }
+  if (err_rcv == -1) {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   pthread_cancel(thread_pacman);
   pthread_cancel(thread_monster);
@@ -144,9 +160,18 @@ void* connectionThread() {
 
     SDL_zero(new_event);
     new_event.type = Event_NewUser;
-    recv(client_socket, &r, sizeof(int), 0);
-    recv(client_socket, &g, sizeof(int), 0);
-    recv(client_socket, &b, sizeof(int), 0);
+    if (recv(client_socket, &r, sizeof(int), 0) == -1) {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    if (recv(client_socket, &g, sizeof(int), 0) == -1) {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    if (recv(client_socket, &b, sizeof(int), 0) == -1) {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
     client = get_newUser(client_socket, r, g, b);
     new_event.user.data1 = client;
     SDL_PushEvent(&new_event);
@@ -178,7 +203,11 @@ void handle_NewUser(user_details* new_client_details,
   if (new_fruits + 2 >= *n_free_spaces) {
     board_size.x = -1;
     board_size.y = -1;
-    send(new_client_details->client_socket, &board_size, sizeof(coords), 0);
+    if (send(new_client_details->client_socket, &board_size, sizeof(coords),
+             0) == -1) {
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
     close(new_client_details->client_socket);
     free(new_client_details);
   } else {
@@ -226,8 +255,11 @@ void handle_NewUser(user_details* new_client_details,
 
     board_size.x = n_lines;
     board_size.y = n_cols;
-    send(pacmans[*n_clients]->u_details->client_socket, &board_size,
-         sizeof(coords), 0);
+    if (send(pacmans[*n_clients]->u_details->client_socket, &board_size,
+             sizeof(coords), 0) == -1) {
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
     if (*n_clients > 0)
       send_AllClients(*n_clients, pacmans, monsters);
     if (n_bricks > 0)
@@ -323,19 +355,27 @@ void handle_Inactivity(entity* character,
   send_Move(updated, pacmans, monsters, n_clients);
 }
 
+void handle_ScoreBoard(int n_clients, entity** pacmans) {
+  for (int i = 0; i < n_clients; i++) {
+    send_ScoreBoard(pacmans, i, n_clients);
+  }
+}
+
 int main(int argc, char* argv[]) {
   int done = 0, n_lines = 100, n_cols = 100;
   SDL_Event event;
   pthread_t thread_id;
   entity *pacmans[100], *monsters[100], **bricks, **free_spaces, *fruits[100];
   entity*** board;
-  int n_clients = 0, n_bricks = 0, n_free_spaces = 0, n_fruits = 0;
+  int n_clients = 0, n_bricks = 0, n_free_spaces = 0, n_fruits = 0,
+      fruit_cap = 0;
   char c;
 
   Event_Move = SDL_RegisterEvents(1);
   Event_NewUser = SDL_RegisterEvents(1);
   Event_Disconnect = SDL_RegisterEvents(1);
   Event_Inactivity = SDL_RegisterEvents(1);
+  Event_ScoreBoard = SDL_RegisterEvents(1);
 
   if (argc == 2) {  // server
     FILE* fp;
@@ -435,118 +475,16 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_create(&thread_id, NULL, connectionThread, NULL);
-    event_struct* move_data;
-    int* updates = (int*)malloc(sizeof(int) * 6);
-    int to_send[2], fruit_cap = 0;
+    pthread_create(&thread_id, NULL, scoreboardTimerThread, NULL);
 
     while (!done) {
       while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
           done = SDL_TRUE;
         } else if (event.type == Event_Move) {
-          //  TODO: handle move event
-
-          move_data = event.user.data1;
-
-          if (move_data->type)  // pacman
-          {
-            handle_mov(pacmans[move_data->client->idx]->type,
-                       move_data->client->idx, move_data->dir, board, n_lines,
-                       n_cols, pacmans, monsters, fruits, free_spaces,
-                       &n_fruits, &n_free_spaces, updates);
-          } else  // monster
-          {
-            handle_mov(monsters[move_data->client->idx]->type,
-                       move_data->client->idx, move_data->dir, board, n_lines,
-                       n_cols, pacmans, monsters, fruits, free_spaces,
-                       &n_fruits, &n_free_spaces, updates);
-          }
-
-          for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
-            for (int i = 0; i < 6; i++) {
-              printf("%d ", updates[i]);
-            }
-            printf("\n");
-            printf("free spaces: %d\n", n_free_spaces);
-            if (updates[a] == 0)  // cherry
-            {
-              paint_cherry(fruits[updates[a + 1]]->column,
-                           fruits[updates[a + 1]]->line);
-            } else if (updates[a] == 1)  // lemon
-            {
-              paint_lemon(fruits[updates[a + 1]]->column,
-                          fruits[updates[a + 1]]->line);
-            }
-            //-------------
-            else if (updates[a] == 2)  // Pacman
-            {
-              paint_pacman(pacmans[updates[a + 1]]->column,
-                           pacmans[updates[a + 1]]->line,
-                           pacmans[updates[a + 1]]->u_details->r,
-                           pacmans[updates[a + 1]]->u_details->g,
-                           pacmans[updates[a + 1]]->u_details->b);
-
-              if (a == 0 && (updates[a + 2] > 1) &&
-                  updates[a + 1] == updates[a + 3]) {
-                to_send[0] = 3;
-              } else if (a == 2) {
-                to_send[0] = 3;
-              } else {
-                to_send[0] = 1;
-              }
-
-              to_send[1] = updates[a + 1];
-
-              send_Move(to_send, pacmans, monsters, n_clients);
-
-            } else if (updates[a] == 3)  // Monster
-            {
-              paint_monster(monsters[updates[a + 1]]->column,
-                            monsters[updates[a + 1]]->line,
-                            monsters[updates[a + 1]]->u_details->r,
-                            monsters[updates[a + 1]]->u_details->g,
-                            monsters[updates[a + 1]]->u_details->b);
-
-              if (a == 0 && (updates[a + 2] > 1) &&
-                  updates[a + 1] == updates[a + 3]) {
-                to_send[0] = 4;
-              } else if (a == 2) {
-                to_send[0] = 4;
-              } else {
-                to_send[0] = 0;
-              }
-
-              to_send[1] = updates[a + 1];
-              send_Move(to_send, pacmans, monsters, n_clients);
-
-            } else if (updates[a] == -1)  // space
-            {
-              printf("free space: %d %d\n", free_spaces[updates[a + 1]]->column,
-                     free_spaces[updates[a + 1]]->line);
-              clear_place(free_spaces[updates[a + 1]]->column,
-                          free_spaces[updates[a + 1]]->line);
-
-            } else if (updates[a] == 4 || updates[a] == 5)  // Charged_Pacman
-            {
-              paint_powerpacman(pacmans[updates[a + 1]]->column,
-                                pacmans[updates[a + 1]]->line,
-                                pacmans[updates[a + 1]]->u_details->r,
-                                pacmans[updates[a + 1]]->u_details->g,
-                                pacmans[updates[a + 1]]->u_details->b);
-
-              if (a == 0 && (updates[a + 2] > 1) &&
-                  updates[a + 1] == updates[a + 3]) {
-                to_send[0] = 5;
-              } else if (a == 2) {
-                to_send[0] = 5;
-              } else {
-                to_send[0] = 2;
-              }
-
-              to_send[1] = updates[a + 1];
-              send_Move(to_send, pacmans, monsters, n_clients);
-            }
-          }
+          handle_mov_init(event.user.data1, board, n_lines, n_cols, pacmans,
+                          monsters, fruits, free_spaces, &n_fruits,
+                          &n_free_spaces, n_clients);
         } else if (event.type == Event_NewUser) {
           user_details* client;
           client = event.user.data1;
@@ -568,6 +506,8 @@ int main(int argc, char* argv[]) {
         } else if (event.type == Event_RespawnFruit) {
           respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits);
           send_Fruit(fruits, n_fruits, pacmans, n_clients);
+        } else if (event.type == Event_ScoreBoard) {
+          handle_ScoreBoard(n_clients, pacmans);
         }
       }
     }

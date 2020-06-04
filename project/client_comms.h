@@ -20,3 +20,5 @@ void rcv_MoveMonster(int server_socket, client_data** clients, int clean);
 void rcv_Cherry(int server_socket);
 
 void rcv_Lemon(int server_socket);
+
+void rcv_ScoreBoard(int server_socket, int n_clients);

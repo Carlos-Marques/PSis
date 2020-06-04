@@ -55,3 +55,8 @@ typedef struct server_args {
   int ready;
   coords* pacman_coords;
 } server_args;
+
+typedef struct scoreB {
+  int id;
+  int score;
+} scoreB;

@@ -10,6 +10,18 @@ Uint32 Event_RespawnFruit;
 
 void* fruitRespawn_Thread();
 
+void handle_mov_init(event_struct* move_data,
+                     entity*** board,
+                     int n_lines,
+                     int n_cols,
+                     entity** pacmans,
+                     entity** monsters,
+                     entity** fruits,
+                     entity** free_spaces,
+                     int* fruit_counter,
+                     int* free_space_counter,
+                     int n_clients);
+
 void handle_mov(int type,
                 int idx,
                 int dir,

@@ -12,6 +12,114 @@ void* fruitRespawn_Thread() {
   return (NULL);
 }
 
+void handle_mov_init(event_struct* move_data,
+                     entity*** board,
+                     int n_lines,
+                     int n_cols,
+                     entity** pacmans,
+                     entity** monsters,
+                     entity** fruits,
+                     entity** free_spaces,
+                     int* fruit_counter,
+                     int* free_space_counter,
+                     int n_clients) {
+  int* updates = (int*)malloc(sizeof(int) * 6);
+  int to_send[2];
+
+  int n_fruits = (*fruit_counter), n_free_spaces = (*free_space_counter);
+
+  if (move_data->type)  // pacman
+  {
+    handle_mov(pacmans[move_data->client->idx]->type, move_data->client->idx,
+               move_data->dir, board, n_lines, n_cols, pacmans, monsters,
+               fruits, free_spaces, &n_fruits, &n_free_spaces, updates);
+  } else  // monster
+  {
+    handle_mov(monsters[move_data->client->idx]->type, move_data->client->idx,
+               move_data->dir, board, n_lines, n_cols, pacmans, monsters,
+               fruits, free_spaces, &n_fruits, &n_free_spaces, updates);
+  }
+
+  for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
+    for (int i = 0; i < 6; i++) {
+      printf("%d ", updates[i]);
+    }
+    printf("\n");
+    printf("n_free_spaces: %d\n", n_free_spaces);
+    if (updates[a] == 2)  // Pacman
+    {
+      printf("pacman\n");
+      paint_pacman(pacmans[updates[a + 1]]->column,
+                   pacmans[updates[a + 1]]->line,
+                   pacmans[updates[a + 1]]->u_details->r,
+                   pacmans[updates[a + 1]]->u_details->g,
+                   pacmans[updates[a + 1]]->u_details->b);
+
+      if (a == 0 && (updates[a + 2] > 1) && updates[a + 1] == updates[a + 3]) {
+        to_send[0] = 3;
+      } else if (a == 2) {
+        to_send[0] = 3;
+      } else {
+        to_send[0] = 1;
+      }
+      to_send[1] = updates[a + 1];
+
+      send_Move(to_send, pacmans, monsters, n_clients);
+      printf("pacman sent\n");
+
+    } else if (updates[a] == 3)  // Monster
+    {
+      printf("monster\n");
+      paint_monster(monsters[updates[a + 1]]->column,
+                    monsters[updates[a + 1]]->line,
+                    monsters[updates[a + 1]]->u_details->r,
+                    monsters[updates[a + 1]]->u_details->g,
+                    monsters[updates[a + 1]]->u_details->b);
+
+      if (a == 0 && (updates[a + 2] > 1) && updates[a + 1] == updates[a + 3]) {
+        to_send[0] = 4;
+      } else if (a == 2) {
+        to_send[0] = 4;
+      } else {
+        to_send[0] = 0;
+      }
+      to_send[1] = updates[a + 1];
+      send_Move(to_send, pacmans, monsters, n_clients);
+
+      printf("monster sent\n");
+    } else if (updates[a] == -1)  // space
+    {
+      printf("free_space: %d %d\n", free_spaces[updates[a + 1]]->line,
+             free_spaces[updates[a + 1]]->column);
+      clear_place(free_spaces[updates[a + 1]]->column,
+                  free_spaces[updates[a + 1]]->line);
+
+    } else if (updates[a] == 4 || updates[a] == 5)  // Charged_Pacman
+    {
+      paint_powerpacman(pacmans[updates[a + 1]]->column,
+                        pacmans[updates[a + 1]]->line,
+                        monsters[updates[a + 1]]->u_details->r,
+                        monsters[updates[a + 1]]->u_details->g,
+                        monsters[updates[a + 1]]->u_details->b);
+
+      if (a == 0 && (updates[a + 2] > 1) && updates[a + 1] == updates[a + 3]) {
+        to_send[0] = 5;
+      } else if (a == 2) {
+        to_send[0] = 5;
+      } else {
+        to_send[0] = 2;
+      }
+      to_send[1] = updates[a + 1];
+      send_Move(to_send, pacmans, monsters, n_clients);
+    }
+  }
+
+  (*fruit_counter) = n_fruits;
+  (*free_space_counter) = n_free_spaces;
+
+  free(updates);
+}
+
 void handle_mov(int type,
                 int idx,
                 int dir,
@@ -348,7 +456,7 @@ void pacman_eats_fruit(int destination_line,
       board_map[destination_line][destination_column];
   (**free_space_counter)++;
 
-  if ((**fruit_counter) != 1) {
+  if ((**fruit_counter) - 1 != aux) {
     fruits[aux] = fruits[(**fruit_counter) - 1];
     fruits[aux]->idx = aux;
   }
@@ -393,17 +501,23 @@ void monster_eats_fruit(int destination_line,
 
   // passar a estrutura da fruta para uma estrutura de free space e mudar as
   // coordenadas
+  printf("board: %d %d\n",
+         board_map[destination_line][destination_column]->line,
+         board_map[destination_line][destination_column]->column);
+  printf("ent: %d %d\n", ent->line, ent->column);
   board_map[destination_line][destination_column]->line = ent->line;
   board_map[destination_line][destination_column]->column = ent->column;
   board_map[destination_line][destination_column]->type = -1;
 
+  printf("free_space_counter: %d\n", **free_space_counter);
   aux = board_map[destination_line][destination_column]->idx;
   board_map[destination_line][destination_column]->idx = **free_space_counter;
   free_space_list[**free_space_counter] =
       board_map[destination_line][destination_column];
   (**free_space_counter)++;
 
-  if ((**fruit_counter) != 1) {
+  printf("fruit counter: %d\n", **fruit_counter);
+  if ((**fruit_counter) - 1 != aux) {
     fruits[aux] = fruits[(**fruit_counter) - 1];
     fruits[aux]->idx = aux;
   }
@@ -413,6 +527,7 @@ void monster_eats_fruit(int destination_line,
   board_map[ent->line][ent->column] =
       board_map[destination_line][destination_column];
 
+  printf("index: %d\n", board_map[ent->line][ent->column]->idx);
   updates[2] = board_map[ent->line][ent->column]->type;
   updates[3] = board_map[ent->line][ent->column]->idx;
 

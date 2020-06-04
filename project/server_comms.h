@@ -16,3 +16,5 @@ void send_Move(int* updated,
                int n_clients);
 
 void send_Fruit(entity** fruits, int n_fruits, entity** pacmans, int n_clients);
+
+void send_ScoreBoard(entity** pacmans, int sendTo, int n_users);
