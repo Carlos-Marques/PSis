@@ -607,7 +607,7 @@ void superPacman_eats_monster(int destination_line,
   board_map[destination_line][destination_column]->line =
       free_space_list[random]->line;
   board_map[free_space_list[random]->line][free_space_list[random]->column] =
-      board_map[destination_line][destination_line];
+      board_map[destination_line][destination_column];
 
   // envia os updates do monstro
   updates[2] = board_map[destination_line][destination_column]->type;

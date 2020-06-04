@@ -226,8 +226,10 @@ void handle_NewUser(user_details* new_client_details,
     new_entity->idx = *n_clients;
     new_entity->u_details = new_client_details;
     pacmans[*n_clients] = new_entity;
-    free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-    free_spaces[random_idx]->idx = random_idx;
+    if ((*n_free_spaces - 1) != random_idx) {
+      free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+      free_spaces[random_idx]->idx = random_idx;
+    }
     (*n_free_spaces)--;
     paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
                  pacmans[*n_clients]->u_details->r,
@@ -241,8 +243,11 @@ void handle_NewUser(user_details* new_client_details,
     new_entity->idx = *n_clients;
     new_entity->u_details = new_client_details;
     monsters[*n_clients] = new_entity;
-    free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-    free_spaces[random_idx]->idx = random_idx;
+    // move last position
+    if ((*n_free_spaces - 1) != random_idx) {
+      free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+      free_spaces[random_idx]->idx = random_idx;
+    }
     (*n_free_spaces)--;
     paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
                   monsters[*n_clients]->u_details->r,
@@ -308,10 +313,12 @@ void handle_Disconnect(entity** pacmans,
   (*n_free_spaces)++;
 
   // move last member of array to leaving idx
-  pacmans[client_id] = pacmans[*n_clients - 1];
-  pacmans[client_id]->idx = client_id;
-  monsters[client_id] = monsters[*n_clients - 1];
-  monsters[client_id]->idx = client_id;
+  if ((*n_clients) - 1 != client_id) {
+    pacmans[client_id] = pacmans[*n_clients - 1];
+    pacmans[client_id]->idx = client_id;
+    monsters[client_id] = monsters[*n_clients - 1];
+    monsters[client_id]->idx = client_id;
+  }
 
   (*n_clients)--;
 
