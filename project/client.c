@@ -3,8 +3,7 @@
 void* serverThread(void* args) {
   server_args* server = args;
   int err_rcv, message_type;
-  client_data* clients[100];
-  int n_clients = 0, id;
+  int n_clients = 0, max_clients = 0;
   coords board_size;
 
   if (recv(server->server_socket, &board_size, sizeof(coords), 0) == -1) {
@@ -18,7 +17,13 @@ void* serverThread(void* args) {
   printf("board: %d %d\n", board_size.x, board_size.y);
   create_board_window(board_size.y, board_size.x);
 
-  printf("here\n");
+  if (recv(server->server_socket, &max_clients, sizeof(int), 0) == -1) {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
+
+  client_data* clients[max_clients];
+
   while ((err_rcv =
               recv(server->server_socket, &message_type, sizeof(int), 0)) > 0) {
     printf("message type: %d\n", message_type);
@@ -27,7 +32,6 @@ void* serverThread(void* args) {
       if (!server->ready) {
         server->pacman_coords = clients[n_clients - 1]->pacman_coords;
         server->ready = 1;
-        id = n_clients - 1;
       }
     } else if (message_type == 1) {
       rcv_Disconnect(clients, server->server_socket, &n_clients);
@@ -55,6 +59,8 @@ void* serverThread(void* args) {
       rcv_Lemon(server->server_socket);
     } else if (message_type == 13) {
       rcv_ScoreBoard(server->server_socket, n_clients);
+    } else if (message_type == 14) {
+      rcv_Clear(server->server_socket);
     }
   }
   if (err_rcv == -1) {

@@ -209,7 +209,10 @@ void rcv_MoveMonster(int server_socket, client_data** clients, int clean) {
 void rcv_Cherry(int server_socket) {
   coords new_fruit_coords;
 
-  recv(server_socket, &new_fruit_coords, sizeof(coords), 0);
+  if (recv(server_socket, &new_fruit_coords, sizeof(coords), 0)) {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
   printf("fruit coords: %d %d\n", new_fruit_coords.x, new_fruit_coords.y);
 
   paint_cherry(new_fruit_coords.y, new_fruit_coords.x);
@@ -217,8 +220,10 @@ void rcv_Cherry(int server_socket) {
 
 void rcv_Lemon(int server_socket) {
   coords new_fruit_coords;
-
-  recv(server_socket, &new_fruit_coords, sizeof(coords), 0);
+  if (recv(server_socket, &new_fruit_coords, sizeof(coords), 0);) {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
   printf("fruit coords: %d %d\n", new_fruit_coords.x, new_fruit_coords.y);
 
   paint_lemon(new_fruit_coords.y, new_fruit_coords.x);
@@ -243,4 +248,16 @@ void rcv_ScoreBoard(int server_socket, int n_clients) {
     printf("\x1b[38;2;%d;%d;%dmUser %d: %d\x1b[0m\n", color.r, color.g, color.b,
            u.id, u.score);
   }
+}
+
+void rcv_Clear(int server_socket) {
+  coords clear_space;
+
+  if (recv(server_socket, &clear_space, sizeof(coords), 0)) {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
+
+  printf("clear place: %d %d\n", clear_space.x, clear_space.y);
+  clear_place(clear_space.y, clear_space.x);
 }

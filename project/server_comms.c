@@ -284,3 +284,20 @@ void send_ScoreBoard(entity** pacmans, int sendTo, int n_users) {
     }
   }
 }
+
+void send_Clear(entity** pacmans, int n_clients, coords* clear_space) {
+  int message_type = 14;
+
+  for (int i = 0; i < n_clients; i++) {
+    if (send(pacmans[i]->u_details->client_socket, &message_type, sizeof(int),
+             0) == -1) {
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if (send(pacmans[i]->u_details->client_socket, clear_space, sizeof(coords),
+             0) == -1) {
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+}

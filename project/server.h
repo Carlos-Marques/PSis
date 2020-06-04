@@ -20,16 +20,20 @@ void handle_NewUser(user_details* new_client_details,
                     int* n_fruits,
                     int n_lines,
                     int n_cols,
-                    int* fruit_cap);
+                    int* fruit_cap,
+                    int max_clients);
 
 void handle_Disconnect(entity** pacmans,
                        entity** monsters,
                        entity** free_spaces,
+                       entity** fruits,
                        int n_lines,
                        int n_cols,
                        int client_id,
                        int* n_free_spaces,
-                       int* n_clients);
+                       int* n_clients,
+                       int* n_fruits,
+                       int* fruit_cap);
 
 void handle_Inactivity(entity* character,
                        entity** free_spaces,

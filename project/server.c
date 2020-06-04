@@ -5,17 +5,23 @@ Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
 
 // DONE: add fruits - Carlos
 // DONE: send new fruit - Carlos
-// TODO: limit colors - Espadinha
+// DONE: limit colors - Espadinha
 // DONE: limit number of players to free spaces - Carlos
-// TODO: check sends and recvs - Espadinha
+// DONE: check sends and recvs - Espadinha
 // DONE: fix mouse movement when too quick - Carlos
 // DON: fix movement delay - Carlos
 // DONE: fix server.x updates - Carlos
 // DONE: fix pacman and monster switch in client - Carlos
-// TODO: send score - Espadinha
+// DONE: send score - Espadinha
 // DONE: superpacman message - Carlos
-// TODO: fix handle move - Espadinha
-// TODO: frees - Espadinha
+// DONE: fix handle move - Espadinha
+// DONE: frees - Espadinha
+// TODO: kills client threads
+// TODO: kill scoreboard thread
+// TODO: kills inactivity threads
+// TODO: kill connection thread
+// TODO: kill server thread in client
+// TODO: handle server disconnect
 
 void* scoreboardTimerThread() {
   SDL_Event new_event;
@@ -190,7 +196,8 @@ void handle_NewUser(user_details* new_client_details,
                     int* n_fruits,
                     int n_lines,
                     int n_cols,
-                    int* fruit_cap) {
+                    int* fruit_cap,
+                    int max_clients) {
   entity* new_entity;
   int random_idx;
   pthread_t thread_id;
@@ -213,7 +220,7 @@ void handle_NewUser(user_details* new_client_details,
   } else {
     *fruit_cap = new_fruit_cap;
     for (int i = 0; i < new_fruits; i++) {
-      respawn_fruit(n_free_spaces, free_spaces, n_fruits, fruits);
+      respawn_fruit(n_free_spaces, free_spaces, n_fruits, fruits, *fruit_cap);
       send_Fruit(fruits, *n_fruits, pacmans, *n_clients);
     }
 
@@ -265,6 +272,11 @@ void handle_NewUser(user_details* new_client_details,
       perror("ERROR\n");
       exit(EXIT_FAILURE);
     }
+    if (send(pacmans[*n_clients]->u_details->client_socket, &max_clients,
+             sizeof(coords), 0) == -1) {
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
     if (*n_clients > 0)
       send_AllClients(*n_clients, pacmans, monsters);
     if (n_bricks > 0)
@@ -283,12 +295,22 @@ void handle_NewUser(user_details* new_client_details,
 void handle_Disconnect(entity** pacmans,
                        entity** monsters,
                        entity** free_spaces,
+                       entity** fruits,
                        int n_lines,
                        int n_cols,
                        int client_id,
                        int* n_free_spaces,
-                       int* n_clients) {
+                       int* n_clients,
+                       int* n_fruits,
+                       int* fruit_cap) {
   entity* new_entity;
+  int n_fruits_remove;
+  coords clear_space;
+
+  *fruit_cap = (*n_clients - 2) * 2;
+  if (*fruit_cap < 0) {
+    *fruit_cap = 0;
+  }
 
   if (DEBUG)
     printf("disconnecting client %d\n", client_id);
@@ -322,7 +344,26 @@ void handle_Disconnect(entity** pacmans,
 
   (*n_clients)--;
 
+  if (*n_clients == 1) {
+    pacmans[*n_clients - 1]->u_details->score = 0;
+  }
+
   send_Disconnect(client_id, *n_clients, pacmans);
+  n_fruits_remove = *n_fruits - *fruit_cap;
+  printf("fruits %d %d %d\n", n_fruits_remove, *n_fruits, *fruit_cap);
+
+  for (int i = 0; i < n_fruits_remove; i++) {
+    free_spaces[*n_free_spaces] = fruits[*n_fruits - 1];
+    free_spaces[*n_free_spaces]->idx = *n_free_spaces;
+    free_spaces[*n_free_spaces]->type = -1;
+    clear_place(free_spaces[*n_free_spaces]->column,
+                free_spaces[*n_free_spaces]->line);
+    clear_space.x = free_spaces[*n_free_spaces]->line;
+    clear_space.y = free_spaces[*n_free_spaces]->column;
+    send_Clear(pacmans, *n_clients, &clear_space);
+    (*n_fruits)--;
+    (*n_free_spaces)++;
+  }
 }
 
 void handle_Inactivity(entity* character,
@@ -369,13 +410,13 @@ void handle_ScoreBoard(int n_clients, entity** pacmans) {
 }
 
 int main(int argc, char* argv[]) {
-  int done = 0, n_lines = 100, n_cols = 100;
+  int done = 0, n_lines = 0, n_cols = 0;
   SDL_Event event;
   pthread_t thread_id;
-  entity *pacmans[100], *monsters[100], **bricks, **free_spaces, *fruits[100];
+  entity **bricks, **free_spaces;
   entity*** board;
   int n_clients = 0, n_bricks = 0, n_free_spaces = 0, n_fruits = 0,
-      fruit_cap = 0;
+      fruit_cap = 0, max_clients = 0, max_fruits = 0;
   char c;
 
   Event_Move = SDL_RegisterEvents(1);
@@ -428,7 +469,12 @@ int main(int argc, char* argv[]) {
 
     bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
     free_spaces = (entity**)malloc(sizeof(entity*) * n_free_spaces);
+    max_clients = ceil((n_free_spaces + 2) / 4);
+    printf("Max Clients: %d\n", max_clients);
+    max_fruits = (max_clients - 1) * 2;
+    printf("Max fruits: %d\n", max_fruits);
 
+    entity *pacmans[max_clients], *monsters[max_clients], *fruits[max_fruits];
     int aux1 = 0;
     int aux2 = 0;
 
@@ -499,19 +545,21 @@ int main(int argc, char* argv[]) {
             printf("fd %d\n", client->client_socket);
           handle_NewUser(client, pacmans, monsters, free_spaces, bricks, fruits,
                          &n_clients, &n_free_spaces, n_bricks, &n_fruits,
-                         n_lines, n_cols, &fruit_cap);
+                         n_lines, n_cols, &fruit_cap, max_clients);
         } else if (event.type == Event_Disconnect) {
           entity* client;
           client = event.user.data1;
-          handle_Disconnect(pacmans, monsters, free_spaces, n_lines, n_cols,
-                            client->idx, &n_free_spaces, &n_clients);
+          handle_Disconnect(pacmans, monsters, free_spaces, fruits, n_lines,
+                            n_cols, client->idx, &n_free_spaces, &n_clients,
+                            &n_fruits, &fruit_cap);
         } else if (event.type == Event_Inactivity) {
           entity* character;
           character = event.user.data1;
           handle_Inactivity(character, free_spaces, pacmans, monsters, board,
                             n_free_spaces, n_clients);
         } else if (event.type == Event_RespawnFruit) {
-          respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits);
+          respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits,
+                        fruit_cap);
           send_Fruit(fruits, n_fruits, pacmans, n_clients);
         } else if (event.type == Event_ScoreBoard) {
           handle_ScoreBoard(n_clients, pacmans);

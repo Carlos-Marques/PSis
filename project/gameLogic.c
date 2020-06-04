@@ -718,32 +718,37 @@ void monster_into_superPacman(int destination_line,
 void respawn_fruit(int* free_space_counter,
                    entity** free_space_list,
                    int* fruit_counter,
-                   entity** fruits) {
-  int random = (rand() % (*free_space_counter));
-  int new_fruit_type = rand() % 2;
+                   entity** fruits,
+                   int fruit_cap) {
+  if (*fruit_counter < fruit_cap) {
+    int random = (rand() % (*free_space_counter));
+    int new_fruit_type = rand() % 2;
 
-  // trocar o tipo para um de fruta
-  free_space_list[random]->type = new_fruit_type;
-  // apontar para a estrutura da nova fruta no array das frutas
-  fruits[(*fruit_counter)] = free_space_list[random];
-  // actualiza o index e o fruit counter
-  fruits[(*fruit_counter)]->idx = (*fruit_counter);
+    // trocar o tipo para um de fruta
+    free_space_list[random]->type = new_fruit_type;
+    // apontar para a estrutura da nova fruta no array das frutas
+    fruits[(*fruit_counter)] = free_space_list[random];
+    // actualiza o index e o fruit counter
+    fruits[(*fruit_counter)]->idx = (*fruit_counter);
 
-  if (new_fruit_type == 0) {  // cherry
-    paint_cherry(fruits[(*fruit_counter)]->column,
-                 fruits[(*fruit_counter)]->line);
-    // TO DO: SEND CHERRY
-  } else {  // lemon
-    paint_lemon(fruits[(*fruit_counter)]->column,
-                fruits[(*fruit_counter)]->line);
-    // TO DO: SEND LEMON
+    if (new_fruit_type == 0) {  // cherry
+      paint_cherry(fruits[(*fruit_counter)]->column,
+                   fruits[(*fruit_counter)]->line);
+      // TO DO: SEND CHERRY
+    } else {  // lemon
+      paint_lemon(fruits[(*fruit_counter)]->column,
+                  fruits[(*fruit_counter)]->line);
+      // TO DO: SEND LEMON
+    }
+
+    (*fruit_counter)++;
+
+    // meter o espaço vazio dos free spaces a apontar para a ultima posição
+    if ((*free_space_counter) - 1 != random) {
+      free_space_list[random] = free_space_list[(*free_space_counter) - 1];
+      free_space_list[random]->idx = random;
+    }
+    free_space_list[(*free_space_counter) - 1] = NULL;
+    (*free_space_counter)--;
   }
-
-  (*fruit_counter)++;
-
-  // meter o espaço vazio dos free spaces a apontar para a ultima posição
-  free_space_list[random] = free_space_list[(*free_space_counter) - 1];
-  free_space_list[random]->idx = random;
-  free_space_list[(*free_space_counter) - 1] = NULL;
-  (*free_space_counter)--;
 }
