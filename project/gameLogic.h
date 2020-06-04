@@ -96,8 +96,7 @@ void monster_into_superPacman(int destination_line,
                               int free_space_counter,
                               entity** free_space_list);
 
-void respawn_fruit(int* updates,
-                   int* free_space_counter,
+void respawn_fruit(int* free_space_counter,
                    entity** free_space_list,
                    int* fruit_counter,
                    entity** fruits);

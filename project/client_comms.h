@@ -10,6 +10,13 @@ void rcv_AllBricks(int server_socket);
 
 void rcv_AllFruits(int server_socket);
 
-void rcv_MovePacman(int server_socket, client_data** clients);
+void rcv_MovePacman(int server_socket,
+                    client_data** clients,
+                    int clean,
+                    int super);
 
-void rcv_MoveMonster(int server_socket, client_data** clients);
+void rcv_MoveMonster(int server_socket, client_data** clients, int clean);
+
+void rcv_Cherry(int server_socket);
+
+void rcv_Lemon(int server_socket);

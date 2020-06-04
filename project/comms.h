@@ -10,8 +10,8 @@
 #include "UI_library.h"
 #include "pacman_structs.h"
 
-#define PORT 8001
-#define DEBUG 1
+#define PORT 8000
+#define DEBUG 0
 
 typedef struct client_args {
   int client_socket;

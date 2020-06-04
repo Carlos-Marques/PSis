@@ -116,17 +116,29 @@ void send_Move(int* updated,
                int n_clients) {
   int message_type, i, j;
   coords updated_coords;
-  
+
   if (updated[0] == 1) {
-    message_type = 5;  // Updated pacman
+    message_type = 5;  // Move pacman
     updated_coords.x = pacmans[updated[1]]->line;
     updated_coords.y = pacmans[updated[1]]->column;
-  } else if(updated[0] == 0){
+  } else if (updated[0] == 0) {  // Move monster
     message_type = 6;
     updated_coords.x = monsters[updated[1]]->line;
     updated_coords.y = monsters[updated[1]]->column;
-  } else if (updated[0] == 2){
-    message_type = 7;  // Updated pacman
+  } else if (updated[0] == 2) {
+    message_type = 7;  // Move superpacman
+    updated_coords.x = pacmans[updated[1]]->line;
+    updated_coords.y = pacmans[updated[1]]->column;
+  } else if (updated[0] == 3) {
+    message_type = 8;  // Update pacman
+    updated_coords.x = pacmans[updated[1]]->line;
+    updated_coords.y = pacmans[updated[1]]->column;
+  } else if (updated[0] == 4) {  // Update monster
+    message_type = 9;
+    updated_coords.x = monsters[updated[1]]->line;
+    updated_coords.y = monsters[updated[1]]->column;
+  } else if (updated[0] == 5) {
+    message_type = 10;  // Update pacman
     updated_coords.x = pacmans[updated[1]]->line;
     updated_coords.y = pacmans[updated[1]]->column;
   }
@@ -136,5 +148,28 @@ void send_Move(int* updated,
     send(pacmans[i]->u_details->client_socket, &updated[1], sizeof(int), 0);
     send(pacmans[i]->u_details->client_socket, &updated_coords, sizeof(coords),
          0);
+  }
+}
+
+void send_Fruit(entity** fruits,
+                int n_fruits,
+                entity** pacmans,
+                int n_clients) {
+  int message_type;
+  if (fruits[n_fruits - 1]->type) {
+    message_type = 12;
+    printf("Sending Lemon\n");
+  } else {
+    message_type = 11;
+    printf("Sending Cherry\n");
+  }
+  coords new_fruit_coords;
+  new_fruit_coords.x = fruits[n_fruits - 1]->line;
+  new_fruit_coords.y = fruits[n_fruits - 1]->column;
+
+  for (int i = 0; i < n_clients; i++) {
+    send(pacmans[i]->u_details->client_socket, &message_type, sizeof(int), 0);
+    send(pacmans[i]->u_details->client_socket, &new_fruit_coords,
+         sizeof(coords), 0);
   }
 }

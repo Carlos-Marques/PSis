@@ -2,16 +2,17 @@
 
 Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
 
-// TODO: add fruits - Carlos
+// DONE: add fruits - Carlos
+// DONE: send new fruit - Carlos
 // TODO: limit colors - Espadinha
-// TODO: limit number of players to free spaces - Carlos
+// DONE: limit number of players to free spaces - Carlos
 // TODO: check sends and recvs - Espadinha
-// TODO: fix mouse movement when too quick - Carlos
-// TODO: fix movement delay - Carlos
+// DONE: fix mouse movement when too quick - Carlos
+// DON: fix movement delay - Carlos
 // DONE: fix server.x updates - Carlos
-// TODO: fix pacman and monster switch in client - Carlos
+// DONE: fix pacman and monster switch in client - Carlos
 // TODO: send score - Espadinha
-// TODO: superpacman message - Carlos
+// DONE: superpacman message - Carlos
 // TODO: fix handle move - Espadinha
 // TODO: frees - Espadinha
 
@@ -19,7 +20,7 @@ void* inactivityThread(void* args) {
   entity* character = args;
 
   while (1) {
-    sleep(10);
+    sleep(1000000);
     SDL_Event new_event;
     new_event.type = Event_Inactivity;
     new_event.user.data1 = character;
@@ -161,65 +162,85 @@ void handle_NewUser(user_details* new_client_details,
                     int* n_clients,
                     int* n_free_spaces,
                     int n_bricks,
-                    int n_fruits,
+                    int* n_fruits,
                     int n_lines,
-                    int n_cols) {
+                    int n_cols,
+                    int* fruit_cap) {
   entity* new_entity;
   int random_idx;
   pthread_t thread_id;
   coords board_size;
-  characters* chars = malloc(sizeof(characters));
+  int new_fruit_cap, new_fruits, message_type;
 
-  // get random free space for entering pacman
-  random_idx = random() % *n_free_spaces;
-  new_entity = free_spaces[random_idx];
-  new_entity->type = 2;
-  new_entity->idx = *n_clients;
-  new_entity->u_details = new_client_details;
-  pacmans[*n_clients] = new_entity;
-  free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-  free_spaces[random_idx]->idx = random_idx;
-  (*n_free_spaces)--;
-  paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
-               pacmans[*n_clients]->u_details->r,
-               pacmans[*n_clients]->u_details->g,
-               pacmans[*n_clients]->u_details->b);
+  new_fruit_cap = (*n_clients) * 2;
+  new_fruits = new_fruit_cap - *fruit_cap;
 
-  // get random free space for entering monster
-  random_idx = random() % *n_free_spaces;
-  new_entity = free_spaces[random_idx];
-  new_entity->type = 3;
-  new_entity->idx = *n_clients;
-  new_entity->u_details = new_client_details;
-  monsters[*n_clients] = new_entity;
-  free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-  free_spaces[random_idx]->idx = random_idx;
-  (*n_free_spaces)--;
-  paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
-                monsters[*n_clients]->u_details->r,
-                monsters[*n_clients]->u_details->g,
-                monsters[*n_clients]->u_details->b);
+  if (new_fruits + 2 >= *n_free_spaces) {
+    board_size.x = -1;
+    board_size.y = -1;
+    send(new_client_details->client_socket, &board_size, sizeof(coords), 0);
+    close(new_client_details->client_socket);
+    free(new_client_details);
+  } else {
+    *fruit_cap = new_fruit_cap;
+    for (int i = 0; i < new_fruits; i++) {
+      respawn_fruit(n_free_spaces, free_spaces, n_fruits, fruits);
+      send_Fruit(fruits, *n_fruits, pacmans, *n_clients);
+    }
 
-  chars->pacman = pacmans[*n_clients];
-  chars->monster = monsters[*n_clients];
-  pthread_create(&thread_id, NULL, clientThread, chars);
+    characters* chars = malloc(sizeof(characters));
 
-  board_size.x = n_lines;
-  board_size.y = n_cols;
-  send(pacmans[*n_clients]->u_details->client_socket, &board_size,
-       sizeof(coords), 0);
-  if (*n_clients > 0)
-    send_AllClients(*n_clients, pacmans, monsters);
-  if (n_bricks > 0)
-    send_AllBricks(pacmans[*n_clients]->u_details->client_socket, bricks,
-                   n_bricks);
-  if (n_fruits > 0)
-    send_AllFruits(pacmans[*n_clients]->u_details->client_socket, fruits,
-                   n_fruits);
+    // get random free space for entering pacman
+    random_idx = random() % *n_free_spaces;
+    new_entity = free_spaces[random_idx];
+    new_entity->type = 2;
+    new_entity->idx = *n_clients;
+    new_entity->u_details = new_client_details;
+    pacmans[*n_clients] = new_entity;
+    free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+    free_spaces[random_idx]->idx = random_idx;
+    (*n_free_spaces)--;
+    paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
+                 pacmans[*n_clients]->u_details->r,
+                 pacmans[*n_clients]->u_details->g,
+                 pacmans[*n_clients]->u_details->b);
 
-  (*n_clients)++;
+    // get random free space for entering monster
+    random_idx = random() % *n_free_spaces;
+    new_entity = free_spaces[random_idx];
+    new_entity->type = 3;
+    new_entity->idx = *n_clients;
+    new_entity->u_details = new_client_details;
+    monsters[*n_clients] = new_entity;
+    free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+    free_spaces[random_idx]->idx = random_idx;
+    (*n_free_spaces)--;
+    paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
+                  monsters[*n_clients]->u_details->r,
+                  monsters[*n_clients]->u_details->g,
+                  monsters[*n_clients]->u_details->b);
 
-  send_NewClient(*n_clients, pacmans, monsters);
+    chars->pacman = pacmans[*n_clients];
+    chars->monster = monsters[*n_clients];
+    pthread_create(&thread_id, NULL, clientThread, chars);
+
+    board_size.x = n_lines;
+    board_size.y = n_cols;
+    send(pacmans[*n_clients]->u_details->client_socket, &board_size,
+         sizeof(coords), 0);
+    if (*n_clients > 0)
+      send_AllClients(*n_clients, pacmans, monsters);
+    if (n_bricks > 0)
+      send_AllBricks(pacmans[*n_clients]->u_details->client_socket, bricks,
+                     n_bricks);
+    if (n_fruits > 0)
+      send_AllFruits(pacmans[*n_clients]->u_details->client_socket, fruits,
+                     *n_fruits);
+
+    (*n_clients)++;
+
+    send_NewClient(*n_clients, pacmans, monsters);
+  }
 }
 
 void handle_Disconnect(entity** pacmans,
@@ -416,7 +437,7 @@ int main(int argc, char* argv[]) {
     pthread_create(&thread_id, NULL, connectionThread, NULL);
     event_struct* move_data;
     int* updates = (int*)malloc(sizeof(int) * 6);
-    int to_send[2];
+    int to_send[2], fruit_cap = 0;
 
     while (!done) {
       while (SDL_PollEvent(&event)) {
@@ -429,24 +450,24 @@ int main(int argc, char* argv[]) {
 
           if (move_data->type)  // pacman
           {
-            printf("handling\n");
             handle_mov(pacmans[move_data->client->idx]->type,
                        move_data->client->idx, move_data->dir, board, n_lines,
                        n_cols, pacmans, monsters, fruits, free_spaces,
                        &n_fruits, &n_free_spaces, updates);
-            printf("Failed here\n");
           } else  // monster
           {
-            printf("handling\n");
             handle_mov(monsters[move_data->client->idx]->type,
                        move_data->client->idx, move_data->dir, board, n_lines,
                        n_cols, pacmans, monsters, fruits, free_spaces,
                        &n_fruits, &n_free_spaces, updates);
-            printf("Failed here\n");
           }
 
-          printf("updated %d\n", updates[5]);
           for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
+            for (int i = 0; i < 6; i++) {
+              printf("%d ", updates[i]);
+            }
+            printf("\n");
+            printf("free spaces: %d\n", n_free_spaces);
             if (updates[a] == 0)  // cherry
             {
               paint_cherry(fruits[updates[a + 1]]->column,
@@ -459,57 +480,81 @@ int main(int argc, char* argv[]) {
             //-------------
             else if (updates[a] == 2)  // Pacman
             {
-              printf("pacman\n");
               paint_pacman(pacmans[updates[a + 1]]->column,
                            pacmans[updates[a + 1]]->line,
                            pacmans[updates[a + 1]]->u_details->r,
                            pacmans[updates[a + 1]]->u_details->g,
                            pacmans[updates[a + 1]]->u_details->b);
 
-              to_send[0] = 1;
+              if (a == 0 && (updates[a + 2] > 1) &&
+                  updates[a + 1] == updates[a + 3]) {
+                to_send[0] = 3;
+              } else if (a == 2) {
+                to_send[0] = 3;
+              } else {
+                to_send[0] = 1;
+              }
+
               to_send[1] = updates[a + 1];
 
               send_Move(to_send, pacmans, monsters, n_clients);
-              printf("pacman sent\n");
 
             } else if (updates[a] == 3)  // Monster
             {
-              printf("monster\n");
               paint_monster(monsters[updates[a + 1]]->column,
                             monsters[updates[a + 1]]->line,
                             monsters[updates[a + 1]]->u_details->r,
                             monsters[updates[a + 1]]->u_details->g,
                             monsters[updates[a + 1]]->u_details->b);
 
-              to_send[0] = 0;
+              if (a == 0 && (updates[a + 2] > 1) &&
+                  updates[a + 1] == updates[a + 3]) {
+                to_send[0] = 4;
+              } else if (a == 2) {
+                to_send[0] = 4;
+              } else {
+                to_send[0] = 0;
+              }
+
               to_send[1] = updates[a + 1];
               send_Move(to_send, pacmans, monsters, n_clients);
 
-              printf("monster sent\n");
             } else if (updates[a] == -1)  // space
             {
+              printf("free space: %d %d\n", free_spaces[updates[a + 1]]->column,
+                     free_spaces[updates[a + 1]]->line);
               clear_place(free_spaces[updates[a + 1]]->column,
                           free_spaces[updates[a + 1]]->line);
 
             } else if (updates[a] == 4 || updates[a] == 5)  // Charged_Pacman
             {
               paint_powerpacman(pacmans[updates[a + 1]]->column,
-                                pacmans[updates[a + 1]]->line, 255, 0, 0);
+                                pacmans[updates[a + 1]]->line,
+                                pacmans[updates[a + 1]]->u_details->r,
+                                pacmans[updates[a + 1]]->u_details->g,
+                                pacmans[updates[a + 1]]->u_details->b);
 
-              to_send[0] = 2;
+              if (a == 0 && (updates[a + 2] > 1) &&
+                  updates[a + 1] == updates[a + 3]) {
+                to_send[0] = 5;
+              } else if (a == 2) {
+                to_send[0] = 5;
+              } else {
+                to_send[0] = 2;
+              }
+
               to_send[1] = updates[a + 1];
               send_Move(to_send, pacmans, monsters, n_clients);
             }
           }
-          printf("done updating\n");
         } else if (event.type == Event_NewUser) {
           user_details* client;
           client = event.user.data1;
           if (DEBUG)
             printf("fd %d\n", client->client_socket);
           handle_NewUser(client, pacmans, monsters, free_spaces, bricks, fruits,
-                         &n_clients, &n_free_spaces, n_bricks, n_fruits,
-                         n_lines, n_cols);
+                         &n_clients, &n_free_spaces, n_bricks, &n_fruits,
+                         n_lines, n_cols, &fruit_cap);
         } else if (event.type == Event_Disconnect) {
           entity* client;
           client = event.user.data1;
@@ -520,6 +565,9 @@ int main(int argc, char* argv[]) {
           character = event.user.data1;
           handle_Inactivity(character, free_spaces, pacmans, monsters, board,
                             n_free_spaces, n_clients);
+        } else if (event.type == Event_RespawnFruit) {
+          respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits);
+          send_Fruit(fruits, n_fruits, pacmans, n_clients);
         }
       }
     }

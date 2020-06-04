@@ -1,4 +1,3 @@
-
 #include "gameLogic.h"
 
 void* inactivityThread(void* args);
@@ -16,9 +15,10 @@ void handle_NewUser(user_details* new_client_details,
                     int* n_clients,
                     int* n_free_spaces,
                     int n_bricks,
-                    int n_fruits,
+                    int* n_fruits,
                     int n_lines,
-                    int n_cols);
+                    int n_cols,
+                    int* fruit_cap);
 
 void handle_Disconnect(entity** pacmans,
                        entity** monsters,

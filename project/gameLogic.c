@@ -593,15 +593,14 @@ void monster_into_superPacman(int destination_line,
   if (board_map[destination_line][destination_column]->type == 3) {
     board_map[destination_line][destination_column]->type = 2;
     // caso o pacman deixe de estar charged, é preciso actualizar o boneco
-    updates[4] = ent->type;
+    updates[4] = board_map[destination_line][destination_column]->type;
     updates[5] = board_map[destination_line][destination_column]->idx;
   } else {
     updates[4] = -2;
   }
 }
 
-void respawn_fruit(int* updates,
-                   int* free_space_counter,
+void respawn_fruit(int* free_space_counter,
                    entity** free_space_list,
                    int* fruit_counter,
                    entity** fruits) {
@@ -611,12 +610,19 @@ void respawn_fruit(int* updates,
   // trocar o tipo para um de fruta
   free_space_list[random]->type = new_fruit_type;
   // apontar para a estrutura da nova fruta no array das frutas
-  fruits[(*fruit_counter) - 1] = free_space_list[random];
+  fruits[(*fruit_counter)] = free_space_list[random];
   // actualiza o index e o fruit counter
-  fruits[(*fruit_counter) - 1]->idx = (*fruit_counter) - 1;
+  fruits[(*fruit_counter)]->idx = (*fruit_counter);
 
-  updates[0] = new_fruit_type;
-  updates[1] = (*fruit_counter) - 1;
+  if (new_fruit_type == 0) {  // cherry
+    paint_cherry(fruits[(*fruit_counter)]->column,
+                 fruits[(*fruit_counter)]->line);
+    // TO DO: SEND CHERRY
+  } else {  // lemon
+    paint_lemon(fruits[(*fruit_counter)]->column,
+                fruits[(*fruit_counter)]->line);
+    // TO DO: SEND LEMON
+  }
 
   (*fruit_counter)++;
 
@@ -625,6 +631,4 @@ void respawn_fruit(int* updates,
   free_space_list[random]->idx = random;
   free_space_list[(*free_space_counter) - 1] = NULL;
   (*free_space_counter)--;
-
-  updates[2] = -2;
 }

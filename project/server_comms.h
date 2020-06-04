@@ -14,3 +14,5 @@ void send_Move(int* updated,
                entity** pacmans,
                entity** monsters,
                int n_clients);
+
+void send_Fruit(entity** fruits, int n_fruits, entity** pacmans, int n_clients);

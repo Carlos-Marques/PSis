@@ -96,6 +96,7 @@ void rcv_AllBricks(int server_socket) {
   }
   free(brick);
 }
+
 void rcv_AllFruits(int server_socket) {
   int n_fruits, type;
   coords* fruit = malloc(sizeof(coords));
@@ -115,36 +116,66 @@ void rcv_AllFruits(int server_socket) {
   }
   free(fruit);
 }
-void rcv_MovePacman(int server_socket, client_data** clients) {
+void rcv_MovePacman(int server_socket,
+                    client_data** clients,
+                    int clean,
+                    int super) {
   int updated_idx;
   coords updated_coords;
 
   recv(server_socket, &updated_idx, sizeof(int), 0);
   recv(server_socket, &updated_coords, sizeof(coords), 0);
 
-  clear_place(clients[updated_idx]->pacman_coords->y,
-              clients[updated_idx]->pacman_coords->x);
+  if (clean)
+    clear_place(clients[updated_idx]->pacman_coords->y,
+                clients[updated_idx]->pacman_coords->x);
   clients[updated_idx]->pacman_coords->x = updated_coords.x;
   clients[updated_idx]->pacman_coords->y = updated_coords.y;
-  paint_pacman(clients[updated_idx]->pacman_coords->y,
-               clients[updated_idx]->pacman_coords->x,
-               clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
-               clients[updated_idx]->rgb->b);
+
+  if (super)
+    paint_powerpacman(
+        clients[updated_idx]->pacman_coords->y,
+        clients[updated_idx]->pacman_coords->x, clients[updated_idx]->rgb->r,
+        clients[updated_idx]->rgb->g, clients[updated_idx]->rgb->b);
+  else
+    paint_pacman(clients[updated_idx]->pacman_coords->y,
+                 clients[updated_idx]->pacman_coords->x,
+                 clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
+                 clients[updated_idx]->rgb->b);
 }
 
-void rcv_MoveMonster(int server_socket, client_data** clients) {
+void rcv_MoveMonster(int server_socket, client_data** clients, int clean) {
   int updated_idx;
   coords updated_coords;
 
   recv(server_socket, &updated_idx, sizeof(int), 0);
   recv(server_socket, &updated_coords, sizeof(coords), 0);
 
-  clear_place(clients[updated_idx]->monster_coords->y,
-              clients[updated_idx]->monster_coords->x);
+  if (clean)
+    clear_place(clients[updated_idx]->monster_coords->y,
+                clients[updated_idx]->monster_coords->x);
   clients[updated_idx]->monster_coords->x = updated_coords.x;
   clients[updated_idx]->monster_coords->y = updated_coords.y;
   paint_monster(clients[updated_idx]->monster_coords->y,
                 clients[updated_idx]->monster_coords->x,
                 clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
                 clients[updated_idx]->rgb->b);
+}
+
+void rcv_Cherry(int server_socket) {
+  coords new_fruit_coords;
+
+  recv(server_socket, &new_fruit_coords, sizeof(coords), 0);
+  printf("fruit coords: %d %d\n", new_fruit_coords.x, new_fruit_coords.y);
+
+  paint_cherry(new_fruit_coords.y, new_fruit_coords.x);
+}
+
+void rcv_Lemon(int server_socket) {
+  coords new_fruit_coords;
+
+  recv(server_socket, &new_fruit_coords, sizeof(coords), 0);
+  printf("fruit coords: %d %d\n", new_fruit_coords.x, new_fruit_coords.y);
+
+  paint_lemon(new_fruit_coords.y, new_fruit_coords.x);
 }
