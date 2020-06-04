@@ -85,6 +85,11 @@ int main(int argc, char* argv[]) {
       exit(-1);
     }
 
+    if( r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 ){
+      printf("Code RGB not valid!\n");
+      exit(-1);
+    }
+
     printf("connecting to %s %d\n", argv[1], server_addr.sin_port);
 
     if (-1 == connect(sock_fd, (const struct sockaddr*)&server_addr,
