@@ -14,3 +14,5 @@ void send_Move(int* updated,
                entity** pacmans,
                entity** monsters,
                int n_clients);
+
+void send_ScoreBoard(entity** pacmans, int sendTo, int n_users);

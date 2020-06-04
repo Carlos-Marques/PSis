@@ -32,7 +32,12 @@ void rcv_Disconnect(client_data** clients, int server_socket, int* n_clients) {
   int client_id;
 
   printf("Received disconnect: %d\n", client_id);
-  recv(server_socket, &client_id, sizeof(int), 0);
+  if (recv(server_socket, &client_id, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
+  
   clear_place(clients[client_id]->pacman_coords->y,
               clients[client_id]->pacman_coords->x);
   clear_place(clients[client_id]->monster_coords->y,
@@ -52,18 +57,34 @@ void rcv_AllClients(client_data** clients, int server_socket, int* n_clients) {
   coords* pacman_coords;
   coords* monster_coords;
 
-  recv(server_socket, n_clients, sizeof(int), 0);
+  if (recv(server_socket, n_clients, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
   printf("Recieving all clients: %d\n", *n_clients);
 
   for (int i = 0; i < *n_clients; i++) {
     client_color = malloc(sizeof(rgb));
-    recv(server_socket, client_color, sizeof(rgb), 0);
+    if (recv(server_socket, client_color, sizeof(rgb), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
 
     pacman_coords = malloc(sizeof(coords));
-    recv(server_socket, pacman_coords, sizeof(coords), 0);
+    if (recv(server_socket, pacman_coords, sizeof(coords), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
 
     monster_coords = malloc(sizeof(coords));
-    recv(server_socket, monster_coords, sizeof(coords), 0);
+    if (recv(server_socket, monster_coords, sizeof(coords), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
 
     client = malloc(sizeof(client_data));
     client->rgb = client_color;
@@ -86,10 +107,19 @@ void rcv_AllBricks(int server_socket) {
   int n_bricks;
   coords* brick = malloc(sizeof(coords));
 
-  recv(server_socket, &n_bricks, sizeof(int), 0);
+  if (recv(server_socket, &n_bricks, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_bricks; i++) {
-    recv(server_socket, brick, sizeof(coords), 0);
+    
+    if (recv(server_socket, brick, sizeof(coords), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
     if (DEBUG)
       printf("brick coords: %d %d\n", brick->x, brick->y);
     paint_brick(brick->y, brick->x);
@@ -99,12 +129,26 @@ void rcv_AllBricks(int server_socket) {
 void rcv_AllFruits(int server_socket) {
   int n_fruits, type;
   coords* fruit = malloc(sizeof(coords));
-
-  recv(server_socket, &n_fruits, sizeof(int), 0);
+  
+  if (recv(server_socket, &n_fruits, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_fruits; i++) {
-    recv(server_socket, fruit, sizeof(coords), 0);
-    recv(server_socket, &type, sizeof(int), 0);
+    
+    if (recv(server_socket, fruit, sizeof(coords), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    
+    if (recv(server_socket, &type, sizeof(int), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
     if (DEBUG)
       printf("fruit coords: %d %d\n", fruit->x, fruit->y);
     if (type) {
@@ -119,8 +163,16 @@ void rcv_MovePacman(int server_socket, client_data** clients) {
   int updated_idx;
   coords updated_coords;
 
-  recv(server_socket, &updated_idx, sizeof(int), 0);
-  recv(server_socket, &updated_coords, sizeof(coords), 0);
+  if (recv(server_socket, &updated_idx, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
+  if (recv(server_socket, &updated_coords, sizeof(coords), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   clear_place(clients[updated_idx]->pacman_coords->y,
               clients[updated_idx]->pacman_coords->x);
@@ -136,8 +188,16 @@ void rcv_MoveMonster(int server_socket, client_data** clients) {
   int updated_idx;
   coords updated_coords;
 
-  recv(server_socket, &updated_idx, sizeof(int), 0);
-  recv(server_socket, &updated_coords, sizeof(coords), 0);
+  if (recv(server_socket, &updated_idx, sizeof(int), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
+  if (recv(server_socket, &updated_coords, sizeof(coords), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   clear_place(clients[updated_idx]->monster_coords->y,
               clients[updated_idx]->monster_coords->x);
@@ -147,4 +207,28 @@ void rcv_MoveMonster(int server_socket, client_data** clients) {
                 clients[updated_idx]->monster_coords->x,
                 clients[updated_idx]->rgb->r, clients[updated_idx]->rgb->g,
                 clients[updated_idx]->rgb->b);
+}
+
+void rcv_ScoreBoard(int server_socket, int n_clients){
+
+  rgb color;
+  scoreB u;
+
+  printf("\nSCORE BOARD:\n");
+
+  for (int i = 0; i < n_clients; i++)
+  {
+    if (recv(server_socket, &color, sizeof(rgb), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    if (recv(server_socket, &u, sizeof(scoreB), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+
+    printf("\x1b[38;2;%d;%d;%dmUser %d: %d\x1b[0m\n", color.r, color.g, color.b, u.id, u.score);
+  }
 }

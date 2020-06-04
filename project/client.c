@@ -7,13 +7,16 @@ void* serverThread(void* args) {
   int n_clients = 0, id;
   coords board_size;
 
-  recv(server->server_socket, &board_size, sizeof(coords), 0);
+  if (recv(server->server_socket, &board_size, sizeof(coords), 0) == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
   printf("board: %d %d\n", board_size.x, board_size.y);
   create_board_window(board_size.y, board_size.x);
 
   printf("here\n");
-  while ((err_rcv =
-              recv(server->server_socket, &message_type, sizeof(int), 0)) > 0) {
+  while ((err_rcv = recv(server->server_socket, &message_type, sizeof(int), 0)) > 0) {
     printf("message type: %d\n", message_type);
     if (message_type == 0) {
       rcv_NewClient(clients, server->server_socket, &n_clients);
@@ -37,7 +40,15 @@ void* serverThread(void* args) {
       server->y_pacman = clients[id]->pacman_coords->y;
     } else if (message_type == 6) {
       rcv_MoveMonster(server->server_socket, clients);
+    } else if (message_type == 13) {
+      //---
+      rcv_ScoreBoard(server->server_socket, n_clients);
     }
+  }
+  if (err_rcv == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
   }
 
   return (NULL);
@@ -98,9 +109,18 @@ int main(int argc, char* argv[]) {
       exit(-1);
     }
 
-    send(sock_fd, &r, sizeof(int), 0);
-    send(sock_fd, &g, sizeof(int), 0);
-    send(sock_fd, &b, sizeof(int), 0);
+    if(send(sock_fd, &r, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if(send(sock_fd, &g, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if(send(sock_fd, &b, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
 
     server.server_socket = sock_fd;
     server.ready = 0;
@@ -124,22 +144,38 @@ int main(int argc, char* argv[]) {
                 printf("down!\n");
                 move_msg.dir = 0;
                 n_monster_m++;
-                send(sock_fd, &move_msg, sizeof(event_message), 0);
+                
+                if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                  perror("ERROR\n");
+                  exit(EXIT_FAILURE);
+                }
               } else if (event.key.keysym.sym == SDLK_UP) {
                 printf("up!\n");
                 move_msg.dir = 1;
                 n_monster_m++;
-                send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                  perror("ERROR\n");
+                  exit(EXIT_FAILURE);
+                }
               } else if (event.key.keysym.sym == SDLK_LEFT) {
                 printf("left!\n");
                 move_msg.dir = 2;
                 n_monster_m++;
-                send(sock_fd, &move_msg, sizeof(event_message), 0);
+                
+                if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                  perror("ERROR\n");
+                  exit(EXIT_FAILURE);
+                }
               } else if (event.key.keysym.sym == SDLK_RIGHT) {
                 printf("right!\n");
                 move_msg.dir = 3;
                 n_monster_m++;
-                send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                  perror("ERROR\n");
+                  exit(EXIT_FAILURE);
+                }
               }
             }
           } else if (event.type == SDL_MOUSEMOTION) {
@@ -173,22 +209,38 @@ int main(int argc, char* argv[]) {
                   printf("right! %d\n", x_new);
                   move_msg.dir = 3;
                   n_pacman_m++;
-                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                  if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                    perror("ERROR\n");
+                    exit(EXIT_FAILURE);
+                  }
                 } else if (delta_x == -1 && delta_y == 0) {
                   printf("left!\n");
                   move_msg.dir = 2;
                   n_pacman_m++;
-                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                  if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                    perror("ERROR\n");
+                    exit(EXIT_FAILURE);
+                  }
                 } else if (delta_y == 1 && delta_x == 0) {
                   printf("down!\n");
                   move_msg.dir = 0;
                   n_pacman_m++;
-                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                  if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                    perror("ERROR\n");
+                    exit(EXIT_FAILURE);
+                  }
                 } else if (delta_y == -1 && delta_x == 0) {
                   printf("up!\n");
                   move_msg.dir = 1;
                   n_pacman_m++;
-                  send(sock_fd, &move_msg, sizeof(event_message), 0);
+
+                  if(send(sock_fd, &move_msg, sizeof(event_message), 0) == -1){
+                    perror("ERROR\n");
+                    exit(EXIT_FAILURE);
+                  }
                 }
               }
             }

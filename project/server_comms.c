@@ -22,10 +22,23 @@ void send_NewClient(int n_clients, entity** pacmans, entity** monsters) {
 
   for (int i = 0; i < n_clients; i++) {
     socket = pacmans[i]->u_details->client_socket;
-    send(socket, &message_type, sizeof(int), 0);
-    send(socket, &client_color, sizeof(rgb), 0);
-    send(socket, &pacman_coords, sizeof(pacman_coords), 0);
-    send(socket, &monster_coords, sizeof(monster_coords), 0);
+
+    if(send(socket, &message_type, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &client_color, sizeof(rgb), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &pacman_coords, sizeof(pacman_coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &monster_coords, sizeof(monster_coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -33,8 +46,15 @@ void send_Disconnect(int client_id, int n_clients, entity** pacmans) {
   int message_type = 1, socket;
   for (int i = 0; i < n_clients; i++) {
     socket = pacmans[i]->u_details->client_socket;
-    send(socket, &message_type, sizeof(int), 0);
-    send(socket, &client_id, sizeof(client_id), 0);
+
+    if( send(socket, &message_type, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &client_id, sizeof(client_id), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -47,8 +67,14 @@ void send_AllClients(int n_clients, entity** pacmans, entity** monsters) {
     printf("Sending all clients: %d\n", n_clients);
 
   socket = pacmans[n_clients]->u_details->client_socket;
-  send(socket, &message_type, sizeof(int), 0);
-  send(socket, &n_clients, sizeof(int), 0);
+  if( send(socket, &message_type, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
+  if( send(socket, &n_clients, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_clients; i++) {
     pacman_coords.x = pacmans[i]->line;
@@ -65,9 +91,18 @@ void send_AllClients(int n_clients, entity** pacmans, entity** monsters) {
              monster_coords.y, pacmans[i]->u_details->r,
              pacmans[i]->u_details->g, pacmans[i]->u_details->b);
 
-    send(socket, &client_color, sizeof(rgb), 0);
-    send(socket, &pacman_coords, sizeof(coords), 0);
-    send(socket, &monster_coords, sizeof(coords), 0);
+    if( send(socket, &client_color, sizeof(rgb), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &pacman_coords, sizeof(coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(socket, &monster_coords, sizeof(coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -77,8 +112,15 @@ void send_AllBricks(int client_socket, entity** bricks, int n_bricks) {
 
   if (DEBUG)
     printf("Sending all bricks\n");
-  send(client_socket, &message_type, sizeof(int), 0);
-  send(client_socket, &n_bricks, sizeof(int), 0);
+
+  if( send(client_socket, &message_type, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
+  if( send(client_socket, &n_bricks, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_bricks; i++) {
     brick.x = bricks[i]->line;
@@ -86,7 +128,11 @@ void send_AllBricks(int client_socket, entity** bricks, int n_bricks) {
 
     if (DEBUG)
       printf("brick coords: %d %d\n", brick.x, brick.y);
-    send(client_socket, &brick, sizeof(coords), 0);
+
+    if( send(client_socket, &brick, sizeof(coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -96,8 +142,15 @@ void send_AllFruits(int client_socket, entity** fruits, int n_fruits) {
 
   if (DEBUG)
     printf("Sending all fruits\n");
-  send(client_socket, &message_type, sizeof(int), 0);
-  send(client_socket, &n_fruits, sizeof(int), 0);
+
+  if( send(client_socket, &message_type, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
+  if( send(client_socket, &n_fruits, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_fruits; i++) {
     fruit.x = fruits[i]->line;
@@ -105,8 +158,15 @@ void send_AllFruits(int client_socket, entity** fruits, int n_fruits) {
 
     if (DEBUG)
       printf("fruits coords: %d %d\n", fruit.x, fruit.y);
-    send(client_socket, &fruit, sizeof(coords), 0);
-    send(client_socket, &fruits[i]->type, sizeof(int), 0);
+
+    if( send(client_socket, &fruit, sizeof(coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(client_socket, &fruits[i]->type, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -132,9 +192,49 @@ void send_Move(int* updated,
   }
 
   for (i = 0; i < n_clients; i++) {
-    send(pacmans[i]->u_details->client_socket, &message_type, sizeof(int), 0);
-    send(pacmans[i]->u_details->client_socket, &updated[1], sizeof(int), 0);
-    send(pacmans[i]->u_details->client_socket, &updated_coords, sizeof(coords),
-         0);
+
+    if( send(pacmans[i]->u_details->client_socket, &message_type, sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(pacmans[i]->u_details->client_socket, &updated[1], sizeof(int), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(pacmans[i]->u_details->client_socket, &updated_coords, sizeof(coords), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+void send_ScoreBoard(entity** pacmans, int sendTo, int n_users){
+
+  int message_type = 13;
+  rgb color;
+  scoreB u;
+
+  if( send(pacmans[sendTo]->u_details->client_socket, &message_type, sizeof(int), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
+
+  for (int i = 0; i < n_users; i++)
+  {
+    color.r = pacmans[i]->u_details->r;
+    color.g = pacmans[i]->u_details->g;
+    color.b = pacmans[i]->u_details->b;
+
+    u.id = pacmans[i]->idx;
+    u.score = pacmans[i]->u_details->score;
+    
+    if( send(pacmans[sendTo]->u_details->client_socket, &color, sizeof(rgb), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
+    if( send(pacmans[sendTo]->u_details->client_socket, &u, sizeof(scoreB), 0) == -1){
+      perror("ERROR\n");
+      exit(EXIT_FAILURE);
+    }
   }
 }

@@ -10,7 +10,7 @@
 #include "UI_library.h"
 #include "pacman_structs.h"
 
-#define PORT 8001
+#define PORT 8003
 #define DEBUG 1
 
 typedef struct server_args {
@@ -56,3 +56,8 @@ typedef struct characters {
   entity* pacman;
   entity* monster;
 } characters;
+
+typedef struct scoreB {
+  int id;
+  int score;
+} scoreB;

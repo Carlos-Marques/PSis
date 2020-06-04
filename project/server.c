@@ -1,19 +1,31 @@
 #include "server.h"
 
-Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
+Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity, Event_ScoreBoard;
 
 // TODO: add fruits - Carlos
 // DONE: limit colors - Espadinha
 // TODO: limit number of players to free spaces - Carlos
-// TODO: check sends and recvs - Espadinha
+// DONE: check sends and recvs - Espadinha
 // TODO: fix mouse movement when too quick - Carlos
 // TODO: fix movement delay - Carlos
 // TODO: fix server.x updates - Carlos
 // TODO: fix pacman and monster switch in client - Carlos
-// TODO: send score - Espadinha
+// DONE: send score - Espadinha
 // TODO: superpacman message - Carlos
 // TODO: fix handle move - Carlos
 // TODO: frees - Espadinha
+
+void* scoreboardTimerThread() {
+
+  SDL_Event new_event;
+  new_event.type = Event_ScoreBoard;
+
+  while (1) {
+    sleep(5);
+    SDL_PushEvent(&new_event);
+  }
+  return (NULL);
+}
 
 void* inactivityThread(void* args) {
   entity* character = args;
@@ -88,6 +100,11 @@ void* clientThread(void* args) {
       }
     }
   }
+  if (err_rcv == -1)
+  {
+    perror("ERROR");
+    exit(EXIT_FAILURE);
+  }
 
   pthread_cancel(thread_pacman);
   pthread_cancel(thread_monster);
@@ -143,9 +160,21 @@ void* connectionThread() {
 
     SDL_zero(new_event);
     new_event.type = Event_NewUser;
-    recv(client_socket, &r, sizeof(int), 0);
-    recv(client_socket, &g, sizeof(int), 0);
-    recv(client_socket, &b, sizeof(int), 0);
+    if (recv(client_socket, &r, sizeof(int), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    if (recv(client_socket, &g, sizeof(int), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
+    if (recv(client_socket, &b, sizeof(int), 0) == -1)
+    {
+      perror("ERROR");
+      exit(EXIT_FAILURE);
+    }
     client = get_newUser(client_socket, r, g, b);
     new_event.user.data1 = client;
     SDL_PushEvent(&new_event);
@@ -206,8 +235,12 @@ void handle_NewUser(user_details* new_client_details,
 
   board_size.x = n_lines;
   board_size.y = n_cols;
-  send(pacmans[*n_clients]->u_details->client_socket, &board_size,
-       sizeof(coords), 0);
+
+  if(send(pacmans[*n_clients]->u_details->client_socket, &board_size, sizeof(coords), 0) == -1){
+    perror("ERROR\n");
+    exit(EXIT_FAILURE);
+  }
+
   if (*n_clients > 0)
     send_AllClients(*n_clients, pacmans, monsters);
   if (n_bricks > 0)
@@ -302,6 +335,14 @@ void handle_Inactivity(entity* character,
   send_Move(updated, pacmans, monsters, n_clients);
 }
 
+void handle_ScoreBoard(int n_clients, entity** pacmans){
+
+  for (int i = 0; i < n_clients; i++)
+  {
+    send_ScoreBoard(pacmans, i, n_clients);
+  }
+}
+
 int main(int argc, char* argv[]) {
   int done = 0, n_lines = 100, n_cols = 100;
   SDL_Event event;
@@ -315,6 +356,7 @@ int main(int argc, char* argv[]) {
   Event_NewUser = SDL_RegisterEvents(1);
   Event_Disconnect = SDL_RegisterEvents(1);
   Event_Inactivity = SDL_RegisterEvents(1);
+  Event_ScoreBoard = SDL_RegisterEvents(1);
 
   if (argc == 2) {  // server
     FILE* fp;
@@ -414,6 +456,7 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_create(&thread_id, NULL, connectionThread, NULL);
+    pthread_create(&thread_id, NULL, scoreboardTimerThread, NULL);
 
     while (!done) {
       while (SDL_PollEvent(&event)) {
@@ -448,6 +491,9 @@ int main(int argc, char* argv[]) {
           character = event.user.data1;
           handle_Inactivity(character, free_spaces, pacmans, monsters, board,
                             n_free_spaces, n_clients);
+        } else if (event.type == Event_ScoreBoard) {
+
+          handle_ScoreBoard(n_clients, pacmans);
         }
       }
     }

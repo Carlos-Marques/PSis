@@ -13,3 +13,5 @@ void rcv_AllFruits(int server_socket);
 void rcv_MovePacman(int server_socket, client_data** clients);
 
 void rcv_MoveMonster(int server_socket, client_data** clients);
+
+void rcv_ScoreBoard(int server_socket, int n_clients);

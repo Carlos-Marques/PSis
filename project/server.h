@@ -1,6 +1,8 @@
 
 #include "gameLogic.h"
 
+void* scoreboardTimerThread();
+
 void* inactivityThread(void* args);
 
 void* clientThread(void* args);
@@ -36,3 +38,6 @@ void handle_Inactivity(entity* character,
                        entity*** board,
                        int n_free_spaces,
                        int n_clients);
+
+void handle_ScoreBoard(int n_users,
+                       entity** pacmans);

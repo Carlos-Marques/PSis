@@ -44,18 +44,6 @@ void handle_mov_init(event_struct* move_data,
   }
   
   for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
-    /*
-    if (updates[a] == 0)  // cherry
-    {
-      paint_cherry(fruits[updates[a + 1]]->column,
-                    fruits[updates[a + 1]]->line);
-    } else if (updates[a] == 1)  // lemon
-    {
-      paint_lemon(fruits[updates[a + 1]]->column,
-                  fruits[updates[a + 1]]->line);
-    }
-    */
-    //-------------
     if (updates[a] == 2)  // Pacman
     {
       printf("pacman\n");
@@ -688,7 +676,7 @@ void monster_into_superPacman(int destination_line,
   if (board_map[destination_line][destination_column]->type == 3) {
     board_map[destination_line][destination_column]->type = 2;
     // caso o pacman deixe de estar charged, é preciso actualizar o boneco
-    updates[4] = ent->type;
+    updates[4] = board_map[destination_line][destination_column]->type;
     updates[5] = board_map[destination_line][destination_column]->idx;
   } else {
     updates[4] = -2;
