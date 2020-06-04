@@ -18,8 +18,7 @@ void* serverThread(void* args) {
     if (message_type == 0) {
       rcv_NewClient(clients, server->server_socket, &n_clients);
       if (!server->ready) {
-        server->x_pacman = clients[n_clients - 1]->pacman_coords->x;
-        server->y_pacman = clients[n_clients - 1]->pacman_coords->y;
+        server->pacman_coords = clients[n_clients - 1]->pacman_coords;
         server->ready = 1;
         id = n_clients - 1;
       }
@@ -33,8 +32,6 @@ void* serverThread(void* args) {
       rcv_AllFruits(server->server_socket);
     } else if (message_type == 5) {
       rcv_MovePacman(server->server_socket, clients);
-      server->x_pacman = clients[id]->pacman_coords->x;
-      server->y_pacman = clients[id]->pacman_coords->y;
     } else if (message_type == 6) {
       rcv_MoveMonster(server->server_socket, clients);
     }
@@ -151,18 +148,13 @@ int main(int argc, char* argv[]) {
                 n_pacman_m = 0;
               }
               if (n_pacman_m < 2) {
-
-                printf("ser-x-pacman = %d \n", server.x_pacman);
-                printf("ser-y-pacman = %d \n", server.y_pacman);
+                printf("ser-x-pacman = %d \n", server.pacman_coords->x);
+                printf("ser-y-pacman = %d \n", server.pacman_coords->y);
                 printf("x-new = %d \n", x_new);
                 printf("y-new = %d \n", y_new);
-                
-                
-                
-                
-                
-                int delta_x = x_new - server.y_pacman;
-                int delta_y = y_new - server.x_pacman;
+
+                int delta_x = x_new - server.pacman_coords->y;
+                int delta_y = y_new - server.pacman_coords->x;
 
                 if (delta_x == 1 && delta_y == 0) {
                   printf("right! %d\n", x_new);

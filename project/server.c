@@ -8,11 +8,11 @@ Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity;
 // TODO: check sends and recvs - Espadinha
 // TODO: fix mouse movement when too quick - Carlos
 // TODO: fix movement delay - Carlos
-// TODO: fix server.x updates - Carlos
+// DONE: fix server.x updates - Carlos
 // TODO: fix pacman and monster switch in client - Carlos
 // TODO: send score - Espadinha
 // TODO: superpacman message - Carlos
-// TODO: fix handle move - Carlos
+// TODO: fix handle move - Espadinha
 // TODO: frees - Espadinha
 
 void* inactivityThread(void* args) {

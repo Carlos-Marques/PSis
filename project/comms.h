@@ -13,13 +13,6 @@
 #define PORT 8001
 #define DEBUG 1
 
-typedef struct server_args {
-  int server_socket;
-  int ready;
-  int x_pacman;
-  int y_pacman;
-} server_args;
-
 typedef struct client_args {
   int client_socket;
 } client_args;
@@ -56,3 +49,9 @@ typedef struct characters {
   entity* pacman;
   entity* monster;
 } characters;
+
+typedef struct server_args {
+  int server_socket;
+  int ready;
+  coords* pacman_coords;
+} server_args;
