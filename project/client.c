@@ -169,6 +169,10 @@ int main(int argc, char* argv[]) {
         if (event.type == SDL_QUIT) {
           server.done = SDL_TRUE;
           server.ready = 0;
+          if (pthread_cancel(thread_id)) {
+            perror("ERROR CANCELING THREAD!\n");
+            exit(EXIT_FAILURE);
+          }
         } else if (event.type == SDL_KEYDOWN) {
           move_msg.type = 0;
           if ((time(NULL) - monster_timer) > 0) {

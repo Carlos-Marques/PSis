@@ -1,14 +1,17 @@
 #include "comms.h"
 
+Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
+    Event_ScoreBoard;
+
 void send_NewClient(int n_clients, entity** pacmans, entity** monsters);
 
 void send_Disconnect(int client_id, int n_clients, entity** pacmans);
 
 void send_AllClients(int n_clients, entity** pacmans, entity** monsters);
 
-void send_AllBricks(int client_socket, entity** bricks, int n_bricks);
+void send_AllBricks(entity* client, entity** bricks, int n_bricks);
 
-void send_AllFruits(int client_socket, entity** fruits, int n_fruits);
+void send_AllFruits(entity* client, entity** fruits, int n_fruits);
 
 void send_Move(int* updated,
                entity** pacmans,

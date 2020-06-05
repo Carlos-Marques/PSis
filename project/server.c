@@ -1,8 +1,5 @@
 #include "server.h"
 
-Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
-    Event_ScoreBoard;
-
 // DONE: add fruits - Carlos
 // DONE: send new fruit - Carlos
 // DONE: limit colors - Espadinha
@@ -16,12 +13,16 @@ Uint32 Event_Move, Event_NewUser, Event_Disconnect, Event_Inactivity,
 // DONE: superpacman message - Carlos
 // DONE: fix handle move - Espadinha
 // DONE: frees - Espadinha
-// TODO: kills client threads
-// TODO: kill scoreboard thread
-// TODO: kills inactivity threads
-// TODO: kill connection thread
-// TODO: kill server thread in client
-// TODO: handle server disconnect
+// DONE: kills client threads
+// DONE: kill scoreboard thread
+// DONE: kills inactivity threads
+// DONE: kill connection thread
+// DONE: kill server thread in client
+// DONE: handle server disconnect
+// DONE: handle send errors
+// DONE: handle recv errors
+// TODO: error handling malloc
+// TODO: error handling threads
 
 void* scoreboardTimerThread() {
   SDL_Event new_event;
@@ -38,7 +39,7 @@ void* inactivityThread(void* args) {
   entity* character = args;
 
   while (1) {
-    sleep(1000000);
+    sleep(5);
     SDL_Event new_event;
     new_event.type = Event_Inactivity;
     new_event.user.data1 = character;
@@ -225,29 +226,30 @@ void handle_NewUser(user_details* new_client_details,
   new_fruit_cap = (*n_clients) * 2;
   new_fruits = new_fruit_cap - *fruit_cap;
 
-  if (new_fruits + 2 >= *n_free_spaces) {
+  if (*n_clients >= max_clients) {
     board_size.x = -1;
     board_size.y = -1;
     if (send(new_client_details->client_socket, &board_size, sizeof(coords),
              0) == -1) {
-      perror("ERROR\n");
-      exit(EXIT_FAILURE);
+      printf("ERROR: sending board size, discarding client\n");
+      close(new_client_details->client_socket);
+      free(new_client_details);
     }
     close(new_client_details->client_socket);
     free(new_client_details);
   } else {
     board_size.x = n_lines;
     board_size.y = n_cols;
-    if (send(pacmans[*n_clients]->u_details->client_socket, &board_size,
-             sizeof(coords), 0) == -1) {
+    if (send(new_client_details->client_socket, &board_size, sizeof(coords),
+             0) == -1) {
       printf("ERROR: sending board size, discarding client\n");
-      close(pacmans[*n_clients]->u_details->client_socket);
-      free(pacmans[*n_clients]->u_details);
-    } else if (send(pacmans[*n_clients]->u_details->client_socket, &max_clients,
+      close(new_client_details->client_socket);
+      free(new_client_details);
+    } else if (send(new_client_details->client_socket, &max_clients,
                     sizeof(int), 0) == -1) {
       printf("ERROR: sending max clients, discarding client\n");
-      close(pacmans[*n_clients]->u_details->client_socket);
-      free(pacmans[*n_clients]->u_details);
+      close(new_client_details->client_socket);
+      free(new_client_details);
     } else {
       *fruit_cap = new_fruit_cap;
       for (int i = 0; i < new_fruits; i++) {
@@ -300,11 +302,9 @@ void handle_NewUser(user_details* new_client_details,
       if (*n_clients > 0)
         send_AllClients(*n_clients, pacmans, monsters);
       if (n_bricks > 0)
-        send_AllBricks(pacmans[*n_clients]->u_details->client_socket, bricks,
-                       n_bricks);
+        send_AllBricks(pacmans[*n_clients], bricks, n_bricks);
       if (n_fruits > 0)
-        send_AllFruits(pacmans[*n_clients]->u_details->client_socket, fruits,
-                       *n_fruits);
+        send_AllFruits(pacmans[*n_clients], fruits, *n_fruits);
 
       (*n_clients)++;
 
@@ -494,7 +494,7 @@ int main(int argc, char* argv[]) {
 
   bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
   free_spaces = (entity**)malloc(sizeof(entity*) * n_free_spaces);
-  max_clients = ceil((n_free_spaces + 2) / 4);
+  max_clients = floor((n_free_spaces + 2) / 4);
   printf("Max Clients: %d\n", max_clients);
   max_fruits = (max_clients - 1) * 2;
   printf("Max fruits: %d\n", max_fruits);
