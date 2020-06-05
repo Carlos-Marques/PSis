@@ -161,7 +161,10 @@ int main(int argc, char* argv[]) {
   server.ready = 0;
   server.done = 0;
 
-  pthread_create(&thread_id, NULL, serverThread, &server);
+  if (pthread_create(&thread_id, NULL, serverThread, &server)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 
   while (!server.done) {
     while (server.ready) {

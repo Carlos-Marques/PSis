@@ -61,8 +61,14 @@ void* clientThread(void* args) {
   if (DEBUG)
     printf("just connected to the server\n");
 
-  pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman);
-  pthread_create(&thread_monster, NULL, inactivityThread, chars->monster);
+  if (pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if (pthread_create(&thread_monster, NULL, inactivityThread, chars->monster)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 
   chars->pacman->u_details->pacman_thread = thread_pacman;
   chars->pacman->u_details->monster_thread = thread_monster;
@@ -78,8 +84,15 @@ void* clientThread(void* args) {
       if (msg.type) {
         if (n_pacman_m < 2) {
           valid = 1;
-          pthread_cancel(thread_pacman);
-          pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman);
+          if (pthread_cancel(thread_pacman)) {
+            perror("ERROR CANCELING THREAD!\n");
+            exit(EXIT_FAILURE);
+          }
+          if (pthread_create(&thread_pacman, NULL, inactivityThread,
+                             chars->pacman)) {
+            perror("ERROR CREATING NEW THREAD!\n");
+            exit(EXIT_FAILURE);
+          }
           n_pacman_m++;
         } else {
           valid = 0;
@@ -87,9 +100,15 @@ void* clientThread(void* args) {
       } else {
         if (n_monster_m < 2) {
           valid = 1;
-          pthread_cancel(thread_monster);
-          pthread_create(&thread_monster, NULL, inactivityThread,
-                         chars->monster);
+          if (pthread_cancel(thread_monster)) {
+            perror("ERROR CANCELING THREAD!\n");
+            exit(EXIT_FAILURE);
+          }
+          if (pthread_create(&thread_monster, NULL, inactivityThread,
+                             chars->monster)) {
+            perror("ERROR CREATING NEW THREAD!\n");
+            exit(EXIT_FAILURE);
+          }
           n_monster_m++;
         } else {
           valid = 0;
@@ -100,6 +119,11 @@ void* clientThread(void* args) {
         if (DEBUG)
           printf("received %d type: %d dir: %d\n", err_rcv, msg.type, msg.dir);
         event_data = malloc(sizeof(event_struct));
+        if (event_data == NULL) {
+          perror("ERROR IN MALLOC!\n");
+          exit(EXIT_FAILURE);
+        }
+
         event_data->dir = msg.dir;
         event_data->client = chars->pacman;
         event_data->type = msg.type;
@@ -115,8 +139,14 @@ void* clientThread(void* args) {
     printf("ERROR: recv move disconnecting client...\n");
   }
 
-  pthread_cancel(thread_pacman);
-  pthread_cancel(thread_monster);
+  if (pthread_cancel(thread_pacman)) {
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if (pthread_cancel(thread_monster)) {
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 
   SDL_zero(new_event);
   new_event.type = Event_Disconnect;
@@ -126,31 +156,26 @@ void* clientThread(void* args) {
   return (NULL);
 }
 
-void* connectionThread() {
-  int server_socket, client_socket, err, r, g, b;
+void* connectionThread(void* args) {
+  int client_socket, err, r, g, b;
   struct sockaddr_in server_local_addr, client_addr;
   socklen_t size_addr = sizeof(client_addr);
   user_details* client;
   SDL_Event new_event;
-
-  server_socket = socket(AF_INET, SOCK_STREAM, 0);  // TCP socket
-  if (server_socket == -1) {
-    perror("SOCKET");
-    exit(EXIT_FAILURE);
-  }
+  int* server_socket = args;
 
   server_local_addr.sin_family = AF_INET;
   server_local_addr.sin_addr.s_addr = INADDR_ANY;
   server_local_addr.sin_port = htons(PORT);
 
-  err = bind(server_socket, (struct sockaddr*)&server_local_addr,
+  err = bind(*server_socket, (struct sockaddr*)&server_local_addr,
              sizeof(server_local_addr));
   if (err == -1) {
     perror("bind");
     exit(-1);
   }
 
-  if (listen(server_socket, 5) == -1) {
+  if (listen(*server_socket, 5) == -1) {
     perror("listen");
     exit(-1);
   }
@@ -159,7 +184,7 @@ void* connectionThread() {
     if (DEBUG)
       printf("waiting for connections\n");
     client_socket =
-        accept(server_socket, (struct sockaddr*)&client_addr, &size_addr);
+        accept(*server_socket, (struct sockaddr*)&client_addr, &size_addr);
     if (client_socket == -1) {
       printf("ERROR: accept new connection, ignoring connection...\n");
     } else {
@@ -258,6 +283,10 @@ void handle_NewUser(user_details* new_client_details,
       }
 
       characters* chars = malloc(sizeof(characters));
+      if (chars == NULL) {
+        perror("ERROR IN MALLOC!\n");
+        exit(EXIT_FAILURE);
+      }
 
       // get random free space for entering pacman
       random_idx = random() % *n_free_spaces;
@@ -296,7 +325,10 @@ void handle_NewUser(user_details* new_client_details,
 
       chars->pacman = pacmans[*n_clients];
       chars->monster = monsters[*n_clients];
-      pthread_create(&thread_id, NULL, clientThread, chars);
+      if (pthread_create(&thread_id, NULL, clientThread, chars)) {
+        perror("ERROR CREATING NEW THREAD!\n");
+        exit(EXIT_FAILURE);
+      }
       chars->pacman->u_details->client_thread = thread_id;
 
       if (*n_clients > 0)
@@ -419,6 +451,12 @@ void handle_Inactivity(entity* character,
                   character->u_details->g, character->u_details->b);
     updated[0] = 0;
     updated[1] = character->idx;
+  } else if (character->type == 4 || character->type == 5) {
+    paint_powerpacman(character->column, character->line,
+                      character->u_details->r, character->u_details->g,
+                      character->u_details->b);
+    updated[0] = 2;
+    updated[1] = character->idx;
   }
 
   send_Move(updated, pacmans, monsters, n_clients);
@@ -431,7 +469,7 @@ void handle_ScoreBoard(int n_clients, entity** pacmans) {
 }
 
 int main(int argc, char* argv[]) {
-  int done = 0, n_lines = 0, n_cols = 0;
+  int done = 0, n_lines = 0, n_cols = 0, server_socket;
   SDL_Event event;
   pthread_t connection_thread, scoreboard_thread;
   entity **bricks, **free_spaces;
@@ -462,9 +500,17 @@ int main(int argc, char* argv[]) {
   getc(fp);
 
   board = (entity***)malloc(sizeof(entity**) * n_lines);
+  if (board == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (int i = 0; i < n_lines; i++) {
     board[i] = (entity**)malloc(sizeof(entity*) * n_cols);
+    if (board[i] == NULL) {
+      perror("ERROR IN MALLOC!\n");
+      exit(EXIT_FAILURE);
+    }
   }
 
   for (int i = 0; i < n_lines; i++) {
@@ -493,7 +539,15 @@ int main(int argc, char* argv[]) {
   fclose(fp);
 
   bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
+  if (bricks == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   free_spaces = (entity**)malloc(sizeof(entity*) * n_free_spaces);
+  if (free_spaces == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   max_clients = floor((n_free_spaces + 2) / 4);
   printf("Max Clients: %d\n", max_clients);
   max_fruits = (max_clients - 1) * 2;
@@ -527,8 +581,21 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  pthread_create(&connection_thread, NULL, connectionThread, NULL);
-  pthread_create(&scoreboard_thread, NULL, scoreboardTimerThread, NULL);
+  server_socket = socket(AF_INET, SOCK_STREAM, 0);  // TCP socket
+  if (server_socket == -1) {
+    perror("SOCKET");
+    exit(EXIT_FAILURE);
+  }
+
+  if (pthread_create(&connection_thread, NULL, connectionThread,
+                     &server_socket)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if (pthread_create(&scoreboard_thread, NULL, scoreboardTimerThread, NULL)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 
   while (!done) {
     while (SDL_PollEvent(&event)) {
@@ -570,4 +637,5 @@ int main(int argc, char* argv[]) {
   free_memory(board, n_lines, n_cols, free_spaces, pacmans, bricks, n_clients);
   pthread_cancel(connection_thread);
   pthread_cancel(scoreboard_thread);
+  close(server_socket);
 }

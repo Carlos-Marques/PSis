@@ -23,6 +23,10 @@ void handle_mov_init(event_struct* move_data,
                      int* free_space_counter,
                      int n_clients) {
   int* updates = (int*)malloc(sizeof(int) * 6);
+  if (updates == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   int to_send[2];
 
   int n_fruits = (*fruit_counter), n_free_spaces = (*free_space_counter);
@@ -483,7 +487,10 @@ void pacman_eats_fruit(int destination_line,
 
   updates[4] = -2;  // vazio
 
-  pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL);
+  if (pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 }
 //---------------------------------------
 void monster_eats_fruit(int destination_line,
@@ -543,7 +550,10 @@ void monster_eats_fruit(int destination_line,
 
   updates[4] = -2;  // vazio
 
-  pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL);
+  if (pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL)) {
+    perror("ERROR CREATING NEW THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 void monster_eats_pacman(int destination_line,
@@ -733,11 +743,9 @@ void respawn_fruit(int* free_space_counter,
     if (new_fruit_type == 0) {  // cherry
       paint_cherry(fruits[(*fruit_counter)]->column,
                    fruits[(*fruit_counter)]->line);
-      // TO DO: SEND CHERRY
     } else {  // lemon
       paint_lemon(fruits[(*fruit_counter)]->column,
                   fruits[(*fruit_counter)]->line);
-      // TO DO: SEND LEMON
     }
 
     (*fruit_counter)++;

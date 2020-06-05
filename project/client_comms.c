@@ -2,9 +2,25 @@
 
 void rcv_NewClient(client_data** clients, int server_socket, int* n_users) {
   client_data* client = malloc(sizeof(client_data));
+  if (client == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   rgb* client_color = malloc(sizeof(rgb));
+  if (client_color == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   coords* pacman_coords = malloc(sizeof(coords));
+  if (pacman_coords == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
   coords* monster_coords = malloc(sizeof(coords));
+  if (monster_coords == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   recv(server_socket, client_color, sizeof(rgb), 0);
   recv(server_socket, pacman_coords, sizeof(coords), 0);
@@ -65,24 +81,40 @@ void rcv_AllClients(client_data** clients, int server_socket, int* n_clients) {
 
   for (int i = 0; i < *n_clients; i++) {
     client_color = malloc(sizeof(rgb));
+    if (client_color == NULL) {
+      perror("ERROR IN MALLOC!\n");
+      exit(EXIT_FAILURE);
+    }
     if (recv(server_socket, client_color, sizeof(rgb), 0) == -1) {
       perror("ERROR");
       exit(EXIT_FAILURE);
     }
 
     pacman_coords = malloc(sizeof(coords));
+    if (pacman_coords == NULL) {
+      perror("ERROR IN MALLOC!\n");
+      exit(EXIT_FAILURE);
+    }
     if (recv(server_socket, pacman_coords, sizeof(coords), 0) == -1) {
       perror("ERROR");
       exit(EXIT_FAILURE);
     }
 
     monster_coords = malloc(sizeof(coords));
+    if (monster_coords == NULL) {
+      perror("ERROR IN MALLOC!\n");
+      exit(EXIT_FAILURE);
+    }
     if (recv(server_socket, monster_coords, sizeof(coords), 0) == -1) {
       perror("ERROR");
       exit(EXIT_FAILURE);
     }
 
     client = malloc(sizeof(client_data));
+    if (client == NULL) {
+      perror("ERROR IN MALLOC!\n");
+      exit(EXIT_FAILURE);
+    }
     client->rgb = client_color;
     client->pacman_coords = pacman_coords;
     client->monster_coords = monster_coords;
@@ -102,6 +134,10 @@ void rcv_AllClients(client_data** clients, int server_socket, int* n_clients) {
 void rcv_AllBricks(int server_socket) {
   int n_bricks;
   coords* brick = malloc(sizeof(coords));
+  if (brick == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   if (recv(server_socket, &n_bricks, sizeof(int), 0) == -1) {
     perror("ERROR");
@@ -123,6 +159,10 @@ void rcv_AllBricks(int server_socket) {
 void rcv_AllFruits(int server_socket) {
   int n_fruits, type;
   coords* fruit = malloc(sizeof(coords));
+  if (fruit == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   if (recv(server_socket, &n_fruits, sizeof(int), 0) == -1) {
     perror("ERROR");

@@ -6,6 +6,10 @@ entity* get_newEntity(int x,
                       int idx,
                       user_details* u_details) {
   entity* ent = (entity*)malloc(sizeof(entity));
+  if (ent == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   ent->line = x;
   ent->column = y;
@@ -20,6 +24,10 @@ entity* get_newEntity(int x,
 
 user_details* get_newUser(int socket, int r, int g, int b) {
   user_details* u_details = (user_details*)malloc(sizeof(user_details));
+  if (u_details == NULL) {
+    perror("ERROR IN MALLOC!\n");
+    exit(EXIT_FAILURE);
+  }
 
   u_details->r = r;
   u_details->g = g;
