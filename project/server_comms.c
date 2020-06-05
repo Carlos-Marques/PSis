@@ -2,9 +2,18 @@
 
 void handle_send_error(entity* client) {
   SDL_Event new_event;
-  pthread_cancel(client->u_details->client_thread);
-  pthread_cancel(client->u_details->pacman_thread);
-  pthread_cancel(client->u_details->monster_thread);
+  if(pthread_cancel(client->u_details->client_thread)){
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if(pthread_cancel(client->u_details->pacman_thread)){
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if(pthread_cancel(client->u_details->monster_thread)){
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
   SDL_zero(new_event);
   new_event.type = Event_Disconnect;
   new_event.user.data1 = client;

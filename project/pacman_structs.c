@@ -46,11 +46,25 @@ void free_memory(entity*** board,
                  entity** bricks,
                  int n_clients) {
   for (int i = 0; i < n_clients; i++) {
+    
     free(pacmans[i]->u_details);
-    close(pacmans[i]->u_details->client_socket);
-    pthread_cancel(pacmans[i]->u_details->pacman_thread);
-    pthread_cancel(pacmans[i]->u_details->monster_thread);
-    pthread_cancel(pacmans[i]->u_details->client_thread);
+    
+    if(close(pacmans[i]->u_details->client_socket)){
+      perror("ERROR IN CLOSING SOCKET!\n");
+      exit(EXIT_FAILURE);
+    }
+    if(pthread_cancel(pacmans[i]->u_details->pacman_thread)){
+      perror("ERROR CANCELING THREAD!\n");
+      exit(EXIT_FAILURE);
+    }
+    if(pthread_cancel(pacmans[i]->u_details->monster_thread)){
+      perror("ERROR CANCELING THREAD!\n");
+      exit(EXIT_FAILURE);
+    }
+    if(pthread_cancel(pacmans[i]->u_details->client_thread)){
+      perror("ERROR CANCELING THREAD!\n");
+      exit(EXIT_FAILURE);
+    }
   }
 
   for (int i = 0; i < n_lin; i++) {

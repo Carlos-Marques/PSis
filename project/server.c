@@ -88,8 +88,7 @@ void* clientThread(void* args) {
             perror("ERROR CANCELING THREAD!\n");
             exit(EXIT_FAILURE);
           }
-          if (pthread_create(&thread_pacman, NULL, inactivityThread,
-                             chars->pacman)) {
+          if (pthread_create(&thread_pacman, NULL, inactivityThread, chars->pacman)) {
             perror("ERROR CREATING NEW THREAD!\n");
             exit(EXIT_FAILURE);
           }
@@ -216,7 +215,10 @@ void* connectionThread(void* args) {
         printf(
             "A new user tried to connect with an invalid code RGB not "
             "valid!\n");
-        close(client_socket);
+        if(close(client_socket)){
+          perror("ERROR IN CLOSING SOCKET!\n");
+          exit(EXIT_FAILURE);
+        }
       } else {
         SDL_zero(new_event);
         new_event.type = Event_NewUser;
@@ -254,13 +256,19 @@ void handle_NewUser(user_details* new_client_details,
   if (*n_clients >= max_clients) {
     board_size.x = -1;
     board_size.y = -1;
-    if (send(new_client_details->client_socket, &board_size, sizeof(coords),
-             0) == -1) {
+    if (send(new_client_details->client_socket, &board_size, sizeof(coords),0) == -1) {
       printf("ERROR: sending board size, discarding client\n");
-      close(new_client_details->client_socket);
+      
+      if(close(new_client_details->client_socket)){
+        perror("ERROR IN CLOSING SOCKET!\n");
+        exit(EXIT_FAILURE);
+      }
       free(new_client_details);
     }
-    close(new_client_details->client_socket);
+    if(close(new_client_details->client_socket)){
+      perror("ERROR IN CLOSING SOCKET!\n");
+      exit(EXIT_FAILURE);
+    }
     free(new_client_details);
   } else {
     board_size.x = n_lines;
@@ -268,12 +276,18 @@ void handle_NewUser(user_details* new_client_details,
     if (send(new_client_details->client_socket, &board_size, sizeof(coords),
              0) == -1) {
       printf("ERROR: sending board size, discarding client\n");
-      close(new_client_details->client_socket);
+      if(close(new_client_details->client_socket)){
+        perror("ERROR IN CLOSING SOCKET!\n");
+        exit(EXIT_FAILURE);
+      }
       free(new_client_details);
     } else if (send(new_client_details->client_socket, &max_clients,
                     sizeof(int), 0) == -1) {
       printf("ERROR: sending max clients, discarding client\n");
-      close(new_client_details->client_socket);
+      if(close(new_client_details->client_socket)){
+        perror("ERROR IN CLOSING SOCKET!\n");
+        exit(EXIT_FAILURE);
+      }
       free(new_client_details);
     } else {
       *fruit_cap = new_fruit_cap;
@@ -371,7 +385,10 @@ void handle_Disconnect(entity** pacmans,
   new_entity = pacmans[client_id];
   new_entity->type = -1;
   new_entity->idx = *n_free_spaces;
-  close(new_entity->u_details->client_socket);
+  if(close(new_entity->u_details->client_socket)){
+    perror("ERROR IN CLOSING SOCKET!\n");
+    exit(EXIT_FAILURE);
+  }
   free(new_entity->u_details);
   free_spaces[*n_free_spaces] = new_entity;
   clear_place(free_spaces[*n_free_spaces]->column,
@@ -536,7 +553,10 @@ int main(int argc, char* argv[]) {
     getc(fp);
   }
 
-  fclose(fp);
+  if(fclose(fp)){
+    perror("ERROR IN CLOSING FILE!\n");
+    exit(EXIT_FAILURE);
+  }
 
   bricks = (entity**)malloc(sizeof(entity*) * n_bricks);
   if (bricks == NULL) {
@@ -635,7 +655,18 @@ int main(int argc, char* argv[]) {
   }
 
   free_memory(board, n_lines, n_cols, free_spaces, pacmans, bricks, n_clients);
-  pthread_cancel(connection_thread);
-  pthread_cancel(scoreboard_thread);
-  close(server_socket);
+  
+  if(pthread_cancel(connection_thread)){
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if(pthread_cancel(scoreboard_thread)){
+    perror("ERROR CANCELING THREAD!\n");
+    exit(EXIT_FAILURE);
+  }
+  if(close(server_socket)){
+    perror("ERROR IN CLOSING SOCKET!\n");
+    exit(EXIT_FAILURE);
+  }
+
 }
