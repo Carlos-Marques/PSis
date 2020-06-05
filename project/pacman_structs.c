@@ -44,7 +44,7 @@ void free_memory(entity*** board,
                  entity** free_spaces,
                  entity** pacmans,
                  entity** bricks,
-                 int n_clients) {
+                 int n_clients, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread) {
   for (int i = 0; i < n_clients; i++) {
     
     free(pacmans[i]->u_details);
@@ -76,4 +76,20 @@ void free_memory(entity*** board,
   free(board);
   free(free_spaces);
   free(bricks);
+
+  //close ongoing fruit respawn threads
+  if(head_activeFruitThread != NULL && tail_activeFruitThread != NULL){
+
+    while ( head_activeFruitThread != NULL )
+    {
+      if (pthread_cancel(head_activeFruitThread->thread_id)) {
+        perror("ERROR CANCELING THREAD!\n");
+        exit(EXIT_FAILURE);
+      }
+      tail_activeFruitThread = head_activeFruitThread;
+      head_activeFruitThread = head_activeFruitThread->next;
+
+      free(tail_activeFruitThread);
+    }
+  }
 }

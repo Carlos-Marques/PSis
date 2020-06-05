@@ -8,6 +8,8 @@
 
 Uint32 Event_RespawnFruit;
 
+
+
 void* fruitRespawn_Thread();
 
 void handle_mov_init(event_struct* move_data,
@@ -20,7 +22,9 @@ void handle_mov_init(event_struct* move_data,
                      entity** free_spaces,
                      int* fruit_counter,
                      int* free_space_counter,
-                     int n_clients);
+                     int n_clients,
+                     activeFruitThread* head_activeFruitThread,
+                     activeFruitThread* tail_activeFruitThread);
 
 void handle_mov(int type,
                 int idx,
@@ -34,7 +38,9 @@ void handle_mov(int type,
                 entity** free_space_list,
                 int* fruit_counter,
                 int* free_space_counter,
-                int* updates);
+                int* updates,
+                activeFruitThread* head_activeFruitThread,
+                activeFruitThread* tail_activeFruitThread);
 
 void get_destination(int dir,
                      int n_lin,
@@ -64,7 +70,7 @@ void pacman_eats_fruit(int destination_line,
                        int** free_space_counter,
                        entity** free_space_list,
                        int** fruit_counter,
-                       entity** fruits);
+                       entity** fruits, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread);
 
 void monster_eats_fruit(int destination_line,
                         int destination_column,
@@ -74,7 +80,7 @@ void monster_eats_fruit(int destination_line,
                         int** free_space_counter,
                         entity** free_space_list,
                         int** fruit_counter,
-                        entity** fruits);
+                        entity** fruits, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread);
 
 void monster_eats_pacman(int destination_line,
                          int destination_column,

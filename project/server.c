@@ -494,6 +494,7 @@ int main(int argc, char* argv[]) {
   int n_clients = 0, n_bricks = 0, n_free_spaces = 0, n_fruits = 0,
       fruit_cap = 0, max_clients = 0, max_fruits = 0;
   char c;
+  activeFruitThread *head_activeFruitThread = NULL, *tail_activeFruitThread = NULL, *aux_activeFruitThread;
 
   Event_Move = SDL_RegisterEvents(1);
   Event_NewUser = SDL_RegisterEvents(1);
@@ -624,7 +625,8 @@ int main(int argc, char* argv[]) {
       } else if (event.type == Event_Move) {
         handle_mov_init(event.user.data1, board, n_lines, n_cols, pacmans,
                         monsters, fruits, free_spaces, &n_fruits,
-                        &n_free_spaces, n_clients);
+                        &n_free_spaces, n_clients, head_activeFruitThread, tail_activeFruitThread);
+
       } else if (event.type == Event_NewUser) {
         user_details* client;
         client = event.user.data1;
@@ -648,14 +650,29 @@ int main(int argc, char* argv[]) {
         respawn_fruit(&n_free_spaces, free_spaces, &n_fruits, fruits,
                       fruit_cap);
         send_Fruit(fruits, n_fruits, pacmans, n_clients);
+
+        if(head_activeFruitThread == tail_activeFruitThread){
+
+          free(head_activeFruitThread);
+          head_activeFruitThread = NULL;
+          tail_activeFruitThread = NULL;
+
+        }else{
+
+          aux_activeFruitThread = head_activeFruitThread->next;
+          free(head_activeFruitThread);
+          head_activeFruitThread = aux_activeFruitThread;
+          
+        }
+
       } else if (event.type == Event_ScoreBoard) {
         handle_ScoreBoard(n_clients, pacmans);
       }
     }
   }
 
-  free_memory(board, n_lines, n_cols, free_spaces, pacmans, bricks, n_clients);
-  
+  free_memory(board, n_lines, n_cols, free_spaces, pacmans, bricks, n_clients, head_activeFruitThread, tail_activeFruitThread);
+
   if(pthread_cancel(connection_thread)){
     perror("ERROR CANCELING THREAD!\n");
     exit(EXIT_FAILURE);

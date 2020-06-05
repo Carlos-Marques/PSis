@@ -21,7 +21,9 @@ void handle_mov_init(event_struct* move_data,
                      entity** free_spaces,
                      int* fruit_counter,
                      int* free_space_counter,
-                     int n_clients) {
+                     int n_clients,
+                     activeFruitThread* head_activeFruitThread,
+                     activeFruitThread* tail_activeFruitThread) {
   int* updates = (int*)malloc(sizeof(int) * 6);
   if (updates == NULL) {
     perror("ERROR IN MALLOC!\n");
@@ -35,12 +37,12 @@ void handle_mov_init(event_struct* move_data,
   {
     handle_mov(pacmans[move_data->client->idx]->type, move_data->client->idx,
                move_data->dir, board, n_lines, n_cols, pacmans, monsters,
-               fruits, free_spaces, &n_fruits, &n_free_spaces, updates);
+               fruits, free_spaces, &n_fruits, &n_free_spaces, updates, head_activeFruitThread, tail_activeFruitThread);
   } else  // monster
   {
     handle_mov(monsters[move_data->client->idx]->type, move_data->client->idx,
                move_data->dir, board, n_lines, n_cols, pacmans, monsters,
-               fruits, free_spaces, &n_fruits, &n_free_spaces, updates);
+               fruits, free_spaces, &n_fruits, &n_free_spaces, updates, head_activeFruitThread, tail_activeFruitThread);
   }
 
   for (int a = 0; a < 6 && updates[a] != -2; a += 2) {
@@ -135,7 +137,9 @@ void handle_mov(int type,
                 entity** free_space_list,
                 int* fruit_counter,
                 int* free_space_counter,
-                int* updates) {
+                int* updates,
+                activeFruitThread* head_activeFruitThread,
+                activeFruitThread* tail_activeFruitThread) {
   int destination_line, destination_column;
   entity* ent;
 
@@ -185,7 +189,7 @@ void handle_mov(int type,
 
           pacman_eats_fruit(destination_line, destination_column, board_map,
                             ent, updates, &free_space_counter, free_space_list,
-                            &fruit_counter, fruits);
+                            &fruit_counter, fruits, head_activeFruitThread, tail_activeFruitThread);
         } else if (ent->type == 3) {  // monstro come pacman ou fruta
 
           if (board_map[destination_line][destination_column]->type == 0 ||
@@ -194,7 +198,7 @@ void handle_mov(int type,
           {
             monster_eats_fruit(destination_line, destination_column, board_map,
                                ent, updates, &free_space_counter,
-                               free_space_list, &fruit_counter, fruits);
+                               free_space_list, &fruit_counter, fruits, head_activeFruitThread, tail_activeFruitThread);
           } else if (board_map[destination_line][destination_column]->type ==
                      2)  // monstro come pacman
           {
@@ -212,7 +216,7 @@ void handle_mov(int type,
           {
             pacman_eats_fruit(destination_line, destination_column, board_map,
                               ent, updates, &free_space_counter,
-                              free_space_list, &fruit_counter, fruits);
+                              free_space_list, &fruit_counter, fruits, head_activeFruitThread, tail_activeFruitThread);
           } else if (board_map[destination_line][destination_column]->type ==
                      3)  // pacman come monstro
           {
@@ -443,7 +447,7 @@ void pacman_eats_fruit(int destination_line,
                        int** free_space_counter,
                        entity** free_space_list,
                        int** fruit_counter,
-                       entity** fruits) {
+                       entity** fruits, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread) {
   int aux;
   pthread_t thread_id;
 
@@ -491,6 +495,17 @@ void pacman_eats_fruit(int destination_line,
     perror("ERROR CREATING NEW THREAD!\n");
     exit(EXIT_FAILURE);
   }
+  if(head_activeFruitThread == NULL && tail_activeFruitThread == NULL){
+    head_activeFruitThread = (activeFruitThread*)malloc(sizeof(activeFruitThread));
+    head_activeFruitThread->thread_id = thread_id;
+    head_activeFruitThread->next = NULL;
+    tail_activeFruitThread = head_activeFruitThread;
+  }else
+  {
+    tail_activeFruitThread->next = (activeFruitThread*)malloc(sizeof(activeFruitThread));
+    tail_activeFruitThread = tail_activeFruitThread->next;
+    tail_activeFruitThread->next = NULL;
+  }
 }
 //---------------------------------------
 void monster_eats_fruit(int destination_line,
@@ -501,7 +516,7 @@ void monster_eats_fruit(int destination_line,
                         int** free_space_counter,
                         entity** free_space_list,
                         int** fruit_counter,
-                        entity** fruits) {
+                        entity** fruits, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread) {
   int aux;
   pthread_t thread_id;
 
@@ -553,6 +568,18 @@ void monster_eats_fruit(int destination_line,
   if (pthread_create(&thread_id, NULL, fruitRespawn_Thread, NULL)) {
     perror("ERROR CREATING NEW THREAD!\n");
     exit(EXIT_FAILURE);
+  }
+
+  if(head_activeFruitThread == NULL && tail_activeFruitThread == NULL){
+    head_activeFruitThread = (activeFruitThread*)malloc(sizeof(activeFruitThread));
+    head_activeFruitThread->thread_id = thread_id;
+    head_activeFruitThread->next = NULL;
+    tail_activeFruitThread = head_activeFruitThread;
+  }else
+  {
+    tail_activeFruitThread->next = (activeFruitThread*)malloc(sizeof(activeFruitThread));
+    tail_activeFruitThread = tail_activeFruitThread->next;
+    tail_activeFruitThread->next = NULL;
   }
 }
 

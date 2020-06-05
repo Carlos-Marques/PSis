@@ -39,6 +39,14 @@ typedef struct entity {
 
 } entity;
 
+typedef struct activeFruitThread activeFruitThread;
+
+struct activeFruitThread {
+  int thread_id;
+  activeFruitThread* next;
+
+};
+
 //-------------------FUNCTIONS-------------------
 
 entity* get_newEntity(int x, int y, int type, int idx, user_details* u_details);
@@ -51,4 +59,4 @@ void free_memory(entity*** board,
                  entity** free_spaces,
                  entity** pacmans,
                  entity** bricks,
-                 int n_clients);
+                 int n_clients, activeFruitThread* head_activeFruitThread, activeFruitThread* tail_activeFruitThread);
