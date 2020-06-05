@@ -1,7 +1,6 @@
 #include "gameLogic.h"
 
 void* fruitRespawn_Thread() {
-  pthread_t thread_id;
   SDL_Event new_event;
 
   sleep(2);
@@ -133,8 +132,8 @@ void handle_mov(int type,
                 int* fruit_counter,
                 int* free_space_counter,
                 int* updates) {
-  int random, destination_line, destination_column, aux, bounce = 0;
-  entity *ent, aux_ent;
+  int destination_line, destination_column;
+  entity* ent;
 
   if (type == 2 || type == 4 || type == 5) {  // pacman
 

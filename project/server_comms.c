@@ -174,7 +174,7 @@ void send_Move(int* updated,
                entity** pacmans,
                entity** monsters,
                int n_clients) {
-  int message_type, i, j;
+  int message_type, i;
   coords updated_coords;
 
   if (updated[0] == 1) {

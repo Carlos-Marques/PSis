@@ -11,7 +11,7 @@
 #include "pacman_structs.h"
 
 #define PORT 8001
-#define DEBUG 0
+#define DEBUG 1
 
 typedef struct client_args {
   int client_socket;
@@ -53,6 +53,7 @@ typedef struct characters {
 typedef struct server_args {
   int server_socket;
   int ready;
+  int done;
   coords* pacman_coords;
 } server_args;
 
