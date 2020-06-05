@@ -110,12 +110,9 @@ void* clientThread(void* args) {
       }
     }
   }
-  /*
   if (err_rcv == -1) {
-    perror("ERROR");
-    exit(EXIT_FAILURE);
+    printf("ERROR: recv move disconnecting client...\n");
   }
-  */
 
   pthread_cancel(thread_pacman);
   pthread_cancel(thread_monster);
@@ -163,44 +160,44 @@ void* connectionThread() {
     client_socket =
         accept(server_socket, (struct sockaddr*)&client_addr, &size_addr);
     if (client_socket == -1) {
-      perror("ACEPT");
-      exit(EXIT_FAILURE);
-    }
-    if (DEBUG)
-      printf("accepted connection \n");
-
-    if (recv(client_socket, &r, sizeof(int), 0) == -1) {
-      perror("ERROR");
-      exit(EXIT_FAILURE);
-    }
-    if (recv(client_socket, &g, sizeof(int), 0) == -1) {
-      perror("ERROR");
-      exit(EXIT_FAILURE);
-    }
-    if (recv(client_socket, &b, sizeof(int), 0) == -1) {
-      perror("ERROR");
-      exit(EXIT_FAILURE);
-    }
-
-    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
-      coords board_size;
-
-      board_size.x = -2;
-      board_size.y = -2;
-
-      if (send(client_socket, &board_size, sizeof(coords), 0) == -1) {
-        perror("ERROR\n");
-        exit(EXIT_FAILURE);
-      }
-      printf(
-          "A new user tried to connect with an invalid code RGB not valid!\n");
-      close(client_socket);
+      printf("ERROR: accept new connection, ignoring connection...\n");
     } else {
-      SDL_zero(new_event);
-      new_event.type = Event_NewUser;
-      client = get_newUser(client_socket, r, g, b);
-      new_event.user.data1 = client;
-      SDL_PushEvent(&new_event);
+      if (DEBUG)
+        printf("accepted connection \n");
+
+      if (recv(client_socket, &r, sizeof(int), 0) == -1) {
+        printf("ERROR: recv r code, rejecting connection...\n");
+        r = -1;
+      }
+      if (recv(client_socket, &g, sizeof(int), 0) == -1) {
+        printf("ERROR: recv g code, rejecting connection...\n");
+        g = -1;
+      }
+      if (recv(client_socket, &b, sizeof(int), 0) == -1) {
+        printf("ERROR: recv b code, rejecting connection...\n");
+        b = -1;
+      }
+
+      if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+        coords board_size;
+
+        board_size.x = -2;
+        board_size.y = -2;
+
+        if (send(client_socket, &board_size, sizeof(coords), 0) == -1) {
+          printf("ERROR: send rejection failed, ignoring client...\n");
+        }
+        printf(
+            "A new user tried to connect with an invalid code RGB not "
+            "valid!\n");
+        close(client_socket);
+      } else {
+        SDL_zero(new_event);
+        new_event.type = Event_NewUser;
+        client = get_newUser(client_socket, r, g, b);
+        new_event.user.data1 = client;
+        SDL_PushEvent(&new_event);
+      }
     }
   }
 }
@@ -239,78 +236,80 @@ void handle_NewUser(user_details* new_client_details,
     close(new_client_details->client_socket);
     free(new_client_details);
   } else {
-    *fruit_cap = new_fruit_cap;
-    for (int i = 0; i < new_fruits; i++) {
-      respawn_fruit(n_free_spaces, free_spaces, n_fruits, fruits, *fruit_cap);
-      send_Fruit(fruits, *n_fruits, pacmans, *n_clients);
-    }
-
-    characters* chars = malloc(sizeof(characters));
-
-    // get random free space for entering pacman
-    random_idx = random() % *n_free_spaces;
-    new_entity = free_spaces[random_idx];
-    new_entity->type = 2;
-    new_entity->idx = *n_clients;
-    new_entity->u_details = new_client_details;
-    pacmans[*n_clients] = new_entity;
-    if ((*n_free_spaces - 1) != random_idx) {
-      free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-      free_spaces[random_idx]->idx = random_idx;
-    }
-    (*n_free_spaces)--;
-    paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
-                 pacmans[*n_clients]->u_details->r,
-                 pacmans[*n_clients]->u_details->g,
-                 pacmans[*n_clients]->u_details->b);
-
-    // get random free space for entering monster
-    random_idx = random() % *n_free_spaces;
-    new_entity = free_spaces[random_idx];
-    new_entity->type = 3;
-    new_entity->idx = *n_clients;
-    new_entity->u_details = new_client_details;
-    monsters[*n_clients] = new_entity;
-    // move last position
-    if ((*n_free_spaces - 1) != random_idx) {
-      free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
-      free_spaces[random_idx]->idx = random_idx;
-    }
-    (*n_free_spaces)--;
-    paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
-                  monsters[*n_clients]->u_details->r,
-                  monsters[*n_clients]->u_details->g,
-                  monsters[*n_clients]->u_details->b);
-
-    chars->pacman = pacmans[*n_clients];
-    chars->monster = monsters[*n_clients];
-    pthread_create(&thread_id, NULL, clientThread, chars);
-    chars->pacman->u_details->client_thread = thread_id;
-
     board_size.x = n_lines;
     board_size.y = n_cols;
     if (send(pacmans[*n_clients]->u_details->client_socket, &board_size,
              sizeof(coords), 0) == -1) {
-      perror("ERROR\n");
-      exit(EXIT_FAILURE);
-    }
-    if (send(pacmans[*n_clients]->u_details->client_socket, &max_clients,
-             sizeof(int), 0) == -1) {
-      perror("ERROR\n");
-      exit(EXIT_FAILURE);
-    }
-    if (*n_clients > 0)
-      send_AllClients(*n_clients, pacmans, monsters);
-    if (n_bricks > 0)
-      send_AllBricks(pacmans[*n_clients]->u_details->client_socket, bricks,
-                     n_bricks);
-    if (n_fruits > 0)
-      send_AllFruits(pacmans[*n_clients]->u_details->client_socket, fruits,
-                     *n_fruits);
+      printf("ERROR: sending board size, discarding client\n");
+      close(pacmans[*n_clients]->u_details->client_socket);
+      free(pacmans[*n_clients]->u_details);
+    } else if (send(pacmans[*n_clients]->u_details->client_socket, &max_clients,
+                    sizeof(int), 0) == -1) {
+      printf("ERROR: sending max clients, discarding client\n");
+      close(pacmans[*n_clients]->u_details->client_socket);
+      free(pacmans[*n_clients]->u_details);
+    } else {
+      *fruit_cap = new_fruit_cap;
+      for (int i = 0; i < new_fruits; i++) {
+        respawn_fruit(n_free_spaces, free_spaces, n_fruits, fruits, *fruit_cap);
+        send_Fruit(fruits, *n_fruits, pacmans, *n_clients);
+      }
 
-    (*n_clients)++;
+      characters* chars = malloc(sizeof(characters));
 
-    send_NewClient(*n_clients, pacmans, monsters);
+      // get random free space for entering pacman
+      random_idx = random() % *n_free_spaces;
+      new_entity = free_spaces[random_idx];
+      new_entity->type = 2;
+      new_entity->idx = *n_clients;
+      new_entity->u_details = new_client_details;
+      pacmans[*n_clients] = new_entity;
+      if ((*n_free_spaces - 1) != random_idx) {
+        free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+        free_spaces[random_idx]->idx = random_idx;
+      }
+      (*n_free_spaces)--;
+      paint_pacman(pacmans[*n_clients]->column, pacmans[*n_clients]->line,
+                   pacmans[*n_clients]->u_details->r,
+                   pacmans[*n_clients]->u_details->g,
+                   pacmans[*n_clients]->u_details->b);
+
+      // get random free space for entering monster
+      random_idx = random() % *n_free_spaces;
+      new_entity = free_spaces[random_idx];
+      new_entity->type = 3;
+      new_entity->idx = *n_clients;
+      new_entity->u_details = new_client_details;
+      monsters[*n_clients] = new_entity;
+      // move last position
+      if ((*n_free_spaces - 1) != random_idx) {
+        free_spaces[random_idx] = free_spaces[*n_free_spaces - 1];
+        free_spaces[random_idx]->idx = random_idx;
+      }
+      (*n_free_spaces)--;
+      paint_monster(monsters[*n_clients]->column, monsters[*n_clients]->line,
+                    monsters[*n_clients]->u_details->r,
+                    monsters[*n_clients]->u_details->g,
+                    monsters[*n_clients]->u_details->b);
+
+      chars->pacman = pacmans[*n_clients];
+      chars->monster = monsters[*n_clients];
+      pthread_create(&thread_id, NULL, clientThread, chars);
+      chars->pacman->u_details->client_thread = thread_id;
+
+      if (*n_clients > 0)
+        send_AllClients(*n_clients, pacmans, monsters);
+      if (n_bricks > 0)
+        send_AllBricks(pacmans[*n_clients]->u_details->client_socket, bricks,
+                       n_bricks);
+      if (n_fruits > 0)
+        send_AllFruits(pacmans[*n_clients]->u_details->client_socket, fruits,
+                       *n_fruits);
+
+      (*n_clients)++;
+
+      send_NewClient(*n_clients, pacmans, monsters);
+    }
   }
 }
 
